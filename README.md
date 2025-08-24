@@ -2,10 +2,11 @@
 
 一个基于 **Java 8 + Spring Boot + MyBatis-Plus + EasyExcel + H2/SQLite** 的微信支付账单导入与可视化分析项目。  
 支持上传微信导出的账单 Excel 文件，自动落库并进行多维度汇总分析（按时间段、星期、小时等），并提供前端可视化看板。
+
 ![9b4a0a0a-9246-4d34-afd7-1cac29bc2250.png](https://s2.loli.net/2025/08/24/DBUmhR3pkfF4lba.png)
 ---
 
-## ✨ 功能特性
+## 功能特性
 - **Excel 上传导入**
   - 支持直接上传微信官方导出的账单文件（无需手动裁剪文件头部说明）。
   - 自动识别表头，幂等去重（以交易单号为唯一键）。
@@ -20,8 +21,14 @@
   - 支持表格分页、筛选、图表联动展示。
 
 ---
+## 访问前端页面
 
-## 📥 获取交易明细 Excel
+`
+http://localhost:8080/ui
+`
+---
+
+## 获取交易明细 Excel
 
 在微信 App 内操作步骤如下：
 
@@ -36,7 +43,7 @@
 
 ---
 
-## 🛠️ 技术栈
+##  技术栈
 - Java 8  
 - Spring Boot 2.7.x  
 - MyBatis-Plus 3.5.x  
@@ -44,11 +51,3 @@
 - H2（本地文件数据库，默认） 或 SQLite  
 - Thymeleaf + Bootstrap + ECharts  
 
----
-
-## 🚀 本地运行
-
-### 1. 克隆代码
-```bash
-git clone https://github.com/yourname/wx-bill-analyzer.git
-cd wx-bill-analyzer
