@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <title>微信账单·经营分析</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"/>
+    <style>
+        body { padding: 20px; }
+        .chart { width: 100%; height: 380px; margin-top: 10px; }
+        .card { margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <h4>微信支付账单 · 经营分析</h4>
+
+    <!-- 上传 -->
+    <div class="card">
+        <div class="card-header">上传 Excel（新增数据）</div>
+        <div class="card-body">
+            <form id="uploadForm">
+                <div class="form-row">
+                    <div class="col-md-4">
+                        <input type="file" name="file" class="form-control-file" required/>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" name="uploadedBy" class="form-control" placeholder="上传人（可选）"/>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-block">上传导入</button>
+                    </div>
+                </div>
+            </form>
+            <small id="uploadMsg" class="form-text text-muted"></small>
+        </div>
+    </div>
+
+    <!-- 筛选 -->
+    <div class="card">
+        <div class="card-header">筛选条件</div>
+        <div class="card-body">
+            <form id="filterForm" class="form-row">
+                <div class="col-md-3">
+                    <label>开始时间</label>
+                    <input type="datetime-local" step="1" class="form-control" id="start" th:value="${defaultStart}">
+                </div>
+                <div class="col-md-3">
+                    <label>结束时间</label>
+                    <input type="datetime-local" step="1" class="form-control" id="end" th:value="${defaultEnd}">
+                </div>
+                <div class="col-md-2">
+                    <label>交易对方</label>
+                    <input class="form-control" id="counterparty" placeholder="模糊匹配">
+                </div>
+                <div class="col-md-2">
+                    <label>方向</label>
+                    <select class="form-control" id="direction">
+                        <option value="">全部</option>
+                        <option value="INCOME">收入</option>
+                        <option value="EXPENSE">支出</option>
+                        <option value="NEUTRAL">不计收支</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-success btn-block" onclick="reloadAll()">应用筛选</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 图表 -->
+    <div class="row">
+        <div class="col-md-4"><div id="chartWeekday" class="chart"></div></div>
+        <div class="col-md-4"><div id="chartBuckets" class="chart"></div></div>
+        <div class="col-md-4"><div id="chartHourly" class="chart"></div></div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="card">
+        <div class="card-header">交易明细</div>
+        <div class="card-body">
+            <table class="table table-sm table-striped" id="tbl">
+                <thead>
+                <tr>
+                    <th>时间</th><th>对方</th><th>商品</th><th>方向</th><th>金额</th><th>方式</th><th>状态</th><th>交易单号</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <nav>
+                <ul class="pagination" id="pager"></ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script>
+    const startInput = document.getElementById('start');
+    const endInput = document.getElementById('end');
+    const cpInput = document.getElementById('counterparty');
+    const dirInput = document.getElementById('direction');
+
+    // 上传
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const fd = new FormData(form);
+        const res = await fetch('/api/import/wechat', { method: 'POST', body: fd });
+        const data = await res.json();
+        document.getElementById('uploadMsg').innerText =
+            `批次 #${data.batchId} 导入成功：总行=${data.recordCount}，新增=${data.insertedCount}，重复=${data.duplicatedCount}。` +
+            (data.periodStart ? ` 覆盖：${data.periodStart} ~ ${data.periodEnd}` : '');
+        reloadAll();
+    });
+
+    // 表格分页
+    let page = 1, size = 20;
+    async function loadTable(append=false) {
+        const params = new URLSearchParams({
+            page, size,
+            start: startInput.value, end: endInput.value,
+            counterparty: cpInput.value, direction: dirInput.value
+        });
+        const res = await fetch('/api/transactions?' + params.toString());
+        const data = await res.json();
+
+        // 渲染表格
+        const tbody = document.querySelector('#tbl tbody');
+        tbody.innerHTML = '';
+        data.records.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.tradeTime}</td>
+                    <td>${r.counterparty||''}</td>
+                    <td>${r.product||''}</td>
+                    <td>${r.direction}</td>
+                    <td>${r.amount}</td>
+                    <td>${r.payMethod||''}</td>
+                    <td>${r.status||''}</td>
+                    <td>${r.orderId}</td>`;
+            tbody.appendChild(tr);
+        });
+
+        // 计算总页数
+        totalPages = Math.ceil(data.total / data.size);
+        renderPager();
+    }
+    function renderPager() {
+        const pager = document.getElementById('pager');
+        pager.innerHTML = '';
+
+        // 上一页
+        pager.innerHTML += `
+    <li class="page-item ${page===1?'disabled':''}">
+      <a class="page-link" href="javascript:void(0)" onclick="gotoPage(${page-1})">上一页</a>
+    </li>`;
+
+        // 页码循环
+        for (let i=1; i<=totalPages; i++) {
+            pager.innerHTML += `
+      <li class="page-item ${i===page?'active':''}">
+        <a class="page-link" href="javascript:void(0)" onclick="gotoPage(${i})">${i}</a>
+      </li>`;
+        }
+
+        // 下一页
+        pager.innerHTML += `
+    <li class="page-item ${page===totalPages?'disabled':''}">
+      <a class="page-link" href="javascript:void(0)" onclick="gotoPage(${page+1})">下一页</a>
+    </li>`;
+    }
+
+    function gotoPage(p) {
+        if (p<1 || p>totalPages) return;
+        page = p;
+        loadTable();
+    }
+    // 图表
+    const c1 = echarts.init(document.getElementById('chartWeekday'));
+    const c2 = echarts.init(document.getElementById('chartBuckets'));
+    const c3 = echarts.init(document.getElementById('chartHourly'));
+
+    async function loadCharts() {
+        const base = `start=${encodeURIComponent(startInput.value)}&end=${encodeURIComponent(endInput.value)}`;
+        // 星期
+        let res = await fetch('/api/analytics/weekday?' + base);
+        let wk = await res.json();
+        const wkMap = {1:'周一',2:'周二',3:'周三',4:'周四',5:'周五',6:'周六',7:'周日'};
+        const wkX = (Object.keys(wkMap)).map(k=>wkMap[k]);
+        const wkY = [1,2,3,4,5,6,7].map(i=>{
+            const found = wk.find(x=>x.weekday===i);
+            return found ? found.total : 0;
+        });
+        c1.setOption({
+            title: {text:'星期分布(收入)'},
+            tooltip: {trigger:'axis'},
+            xAxis: {type:'category', data: wkX},
+            yAxis: {type:'value'},
+            series: [{type:'bar', data: wkY}]
+        });
+
+        // 时段
+        res = await fetch('/api/analytics/time-buckets?' + base);
+        const tb = await res.json();
+        const order = ['凌晨(0-5)','早晨(6-9)','上午(10-11)','中午(12-13)','下午(14-17)','晚上(18-21)','深夜(22-23)'];
+        c2.setOption({
+            title: {text:'时段分布(收入)'},
+            tooltip: {trigger:'axis'},
+            xAxis: {type:'category', data: order},
+            yAxis: {type:'value'},
+            series: [{type:'bar', data: order.map(o => {
+                    const f = tb.find(x=>x.bucket===o);
+                    return f ? f.total : 0;
+                })}]
+        });
+
+        // 小时
+        res = await fetch('/api/analytics/hourly?' + base);
+        const hh = await res.json();
+        const hx = Array.from({length:24}, (_,i)=>i);
+        c3.setOption({
+            title: {text:'小时分布(收入)'},
+            tooltip: {trigger:'axis'},
+            xAxis: {type:'category', data: hx},
+            yAxis: {type:'value'},
+            series: [{type:'line', data: hx.map(h=>{
+                    const f = hh.find(x=>x.hour===h);
+                    return f ? f.total : 0;
+                })}]
+        });
+    }
+
+    function reloadAll() { page = 1; loadTable(false); loadCharts(); }
+    // 初次加载
+    reloadAll();
+</script>
+</body>
+</html>
