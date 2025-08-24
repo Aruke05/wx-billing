@@ -2,7 +2,7 @@
 
 一个基于 **Java 8 + Spring Boot + MyBatis-Plus + EasyExcel + H2/SQLite** 的微信支付账单导入与可视化分析项目。  
 支持上传微信导出的账单 Excel 文件，自动落库并进行多维度汇总分析（按时间段、星期、小时等），并提供前端可视化看板。
-![test](https://img.enu9.com/file/AgACAgUAAyEGAASQO-2rAAMpaKqSMdcDucFgMbJo1KymrPohpPgAAtfIMRvYH1hVmX__vwUk9G4BAAMCAAN3AAM2BA.png)
+![9b4a0a0a-9246-4d34-afd7-1cac29bc2250.png](https://s2.loli.net/2025/08/24/DBUmhR3pkfF4lba.png)
 ---
 
 ## ✨ 功能特性
