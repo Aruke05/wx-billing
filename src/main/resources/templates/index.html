@@ -89,9 +89,17 @@
                 </thead>
                 <tbody></tbody>
             </table>
-            <nav>
-                <ul class="pagination" id="pager"></ul>
-            </nav>
+
+            <div class="d-flex align-items-center">
+                <nav class="mr-3 mb-0">
+                    <ul class="pagination mb-0" id="pager"></ul>
+                </nav>
+                <div class="form-inline">
+                    <span class="mr-2" id="pageInfo">第 1 / 1 页</span>
+                    <input type="number" min="1" class="form-control form-control-sm mr-2" id="jumpInput" style="width:100px" placeholder="页码">
+                    <button class="btn btn-sm btn-outline-primary" id="jumpBtn">跳转</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -116,8 +124,15 @@
         reloadAll();
     });
 
+    // 英文枚举 -> 中文展示
+    const DIRECTION_CN = { INCOME: '收入', EXPENSE: '支出', NEUTRAL: '中性交易' };
+
     // 表格分页
-    let page = 1, size = 20;
+    let page = 1;
+    let size = 20;  // 每页大小，可调
+    let total = 0;
+    let totalPages = 1;
+
     async function loadTable(append=false) {
         const params = new URLSearchParams({
             page, size,
@@ -127,15 +142,20 @@
         const res = await fetch('/api/transactions?' + params.toString());
         const data = await res.json();
 
-        // 渲染表格
+        total = data.total || 0;
+        totalPages = Math.max(1, Math.ceil(total / data.size));
+        document.getElementById('pageInfo').innerText = `第 ${data.current} / ${totalPages} 页`;
+
         const tbody = document.querySelector('#tbl tbody');
-        tbody.innerHTML = '';
-        data.records.forEach(r => {
+        if (!append) tbody.innerHTML = '';
+
+        (data.records || []).forEach(r => {
             const tr = document.createElement('tr');
+            const dirCn = DIRECTION_CN[r.direction] || r.direction || '';
             tr.innerHTML = `<td>${r.tradeTime}</td>
                     <td>${r.counterparty||''}</td>
                     <td>${r.product||''}</td>
-                    <td>${r.direction}</td>
+                    <td>${dirCn}</td>
                     <td>${r.amount}</td>
                     <td>${r.payMethod||''}</td>
                     <td>${r.status||''}</td>
@@ -143,48 +163,67 @@
             tbody.appendChild(tr);
         });
 
-        // 计算总页数
-        totalPages = Math.ceil(data.total / data.size);
         renderPager();
     }
+
+    // 渲染分页条
     function renderPager() {
         const pager = document.getElementById('pager');
         pager.innerHTML = '';
 
-        // 上一页
-        pager.innerHTML += `
-    <li class="page-item ${page===1?'disabled':''}">
-      <a class="page-link" href="javascript:void(0)" onclick="gotoPage(${page-1})">上一页</a>
-    </li>`;
+        const makeItem = (label, targetPage, disabled=false, active=false) => {
+            const li = document.createElement('li');
+            li.className = `page-item ${disabled ? 'disabled':''} ${active ? 'active':''}`;
+            const a = document.createElement('a');
+            a.className = 'page-link';
+            a.href = 'javascript:void(0)';
+            a.textContent = label;
+            a.onclick = () => {
+                if (disabled || active) return;
+                page = targetPage;
+                loadTable(false);
+            };
+            li.appendChild(a);
+            return li;
+        };
 
-        // 页码循环
-        for (let i=1; i<=totalPages; i++) {
-            pager.innerHTML += `
-      <li class="page-item ${i===page?'active':''}">
-        <a class="page-link" href="javascript:void(0)" onclick="gotoPage(${i})">${i}</a>
-      </li>`;
+        // 上一页
+        pager.appendChild(makeItem('«', Math.max(1, page-1), page<=1));
+
+        // 页码（窗口化显示）
+        const windowSize = 5;
+        const start = Math.max(1, page - Math.floor(windowSize/2));
+        const end = Math.min(totalPages, start + windowSize - 1);
+        const realStart = Math.max(1, end - windowSize + 1);
+
+        for (let p = realStart; p <= end; p++) {
+            pager.appendChild(makeItem(String(p), p, false, p===page));
         }
 
         // 下一页
-        pager.innerHTML += `
-    <li class="page-item ${page===totalPages?'disabled':''}">
-      <a class="page-link" href="javascript:void(0)" onclick="gotoPage(${page+1})">下一页</a>
-    </li>`;
+        pager.appendChild(makeItem('»', Math.min(totalPages, page+1), page>=totalPages));
     }
 
-    function gotoPage(p) {
-        if (p<1 || p>totalPages) return;
-        page = p;
-        loadTable();
-    }
+    // 跳转页
+    document.getElementById('jumpBtn').onclick = () => {
+        const v = parseInt(document.getElementById('jumpInput').value, 10);
+        if (!isNaN(v) && v >= 1 && v <= totalPages) {
+            page = v;
+            loadTable(false);
+        } else {
+            alert('请输入 1 到 ' + totalPages + ' 之间的页码');
+        }
+    };
     // 图表
     const c1 = echarts.init(document.getElementById('chartWeekday'));
     const c2 = echarts.init(document.getElementById('chartBuckets'));
     const c3 = echarts.init(document.getElementById('chartHourly'));
 
     async function loadCharts() {
-        const base = `start=${encodeURIComponent(startInput.value)}&end=${encodeURIComponent(endInput.value)}`;
-        // 星期
+        const base = `start=${encodeURIComponent(startInput.value)}`
+            + `&end=${encodeURIComponent(endInput.value)}`
+            + `&counterparty=${encodeURIComponent(cpInput.value)}`
+            + `&direction=${encodeURIComponent(dirInput.value)}`;        // 星期
         let res = await fetch('/api/analytics/weekday?' + base);
         let wk = await res.json();
         const wkMap = {1:'周一',2:'周二',3:'周三',4:'周四',5:'周五',6:'周六',7:'周日'};

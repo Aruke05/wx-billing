@@ -22,13 +22,14 @@ public class AnalyticsController {
     @GetMapping("/summary")
     public Map<String,Object> summary(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end) {
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+            @RequestParam(required = false) String counterparty,
+            @RequestParam(required = false) String direction) {
 
-        // 总收入/笔数
         Map<String,Object> resp = new LinkedHashMap<>();
-        List<Map<String,Object>> weekday = mapper.sumByWeekday(start, end);
-        List<Map<String,Object>> buckets = mapper.sumByTimeBuckets(start, end);
-        List<Map<String,Object>> hours   = mapper.sumByHour(start, end);
+        List<Map<String,Object>> weekday = mapper.sumByWeekday(start, end, counterparty, direction);
+        List<Map<String,Object>> buckets = mapper.sumByTimeBuckets(start, end, counterparty, direction);
+        List<Map<String,Object>> hours   = mapper.sumByHour(start, end, counterparty, direction);
         resp.put("weekday", weekday);
         resp.put("timeBuckets", buckets);
         resp.put("hourly", hours);
@@ -38,22 +39,29 @@ public class AnalyticsController {
     @GetMapping("/weekday")
     public List<Map<String,Object>> weekday(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
-        return mapper.sumByWeekday(start, end);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            @RequestParam(required = false) String counterparty,
+            @RequestParam(required = false) String direction) {
+        return mapper.sumByWeekday(start, end, counterparty, direction);
     }
 
     @GetMapping("/time-buckets")
     public List<Map<String, Object>> timeBuckets(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
-        return mapper.sumByTimeBuckets(start, end);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            @RequestParam(required = false) String counterparty,
+            @RequestParam(required = false) String direction) {
+        return mapper.sumByTimeBuckets(start, end, counterparty, direction);
     }
 
     @GetMapping("/hourly")
     public List<Map<String, Object>> hourly(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
-        return mapper.sumByHour(start, end);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            @RequestParam(required = false) String counterparty,
+            @RequestParam(required = false) String direction) {
+        return mapper.sumByHour(start, end, counterparty, direction);
     }
+
 
 }
