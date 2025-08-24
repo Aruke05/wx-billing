@@ -235,7 +235,7 @@
         c1.setOption({
             title: {text:'星期分布(收入)'},
             tooltip: {trigger:'axis'},
-            xAxis: {type:'category', data: wkX},
+            xAxis: {type:'category', data: wkX, axisLabel: { interval: 0, rotate: 30 }},
             yAxis: {type:'value'},
             series: [{type:'bar', data: wkY}]
         });
@@ -243,11 +243,15 @@
         // 时段
         res = await fetch('/api/analytics/time-buckets?' + base);
         const tb = await res.json();
-        const order = ['凌晨(0-5)','早晨(6-9)','上午(10-11)','中午(12-13)','下午(14-17)','晚上(18-21)','深夜(22-23)'];
+        const order = ['凌晨(1-5)','早晨(6-9)','上午(10-11)','中午(12-13)','下午(14-17)','傍晚(18-20)','晚上(21-0)'];
         c2.setOption({
             title: {text:'时段分布(收入)'},
             tooltip: {trigger:'axis'},
-            xAxis: {type:'category', data: order},
+            xAxis: {
+                type: 'category',
+                data: order,
+                axisLabel: { interval: 0, rotate: 30 }
+            },
             yAxis: {type:'value'},
             series: [{type:'bar', data: order.map(o => {
                     const f = tb.find(x=>x.bucket===o);
@@ -262,7 +266,7 @@
         c3.setOption({
             title: {text:'小时分布(收入)'},
             tooltip: {trigger:'axis'},
-            xAxis: {type:'category', data: hx},
+            xAxis: {type:'category', data: hx, axisLabel: { interval: 0, rotate: 30 }},
             yAxis: {type:'value'},
             series: [{type:'line', data: hx.map(h=>{
                     const f = hh.find(x=>x.hour===h);
