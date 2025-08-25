@@ -74,6 +74,9 @@
                         <option value="NEUTRAL">不计收支</option>
                     </select>
                 </div>
+                <div class="col-md-8">
+                    <label>&nbsp;</label>
+                </div>
                 <div class="col-md-2">
                     <label>&nbsp;</label>
                     <button type="button" class="btn btn-success btn-block" onclick="reloadAll()">应用筛选</button>
@@ -151,6 +154,14 @@
     }
 
     let _syncing = false;
+    // 需要时把它改成 true，即可在“未手动改时间”的情况下自动贴近天边界
+    const normalizeToDayBounds = true; // true => 左 00:00:00 / 右 23:59:59.999
+    let userEditedTime = false;         // 记录用户是否“手动改过时间”
+
+    function formatDate(d) {
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
 
     window.rangePickerFp = flatpickr('#rangePicker', {
         mode: 'range',
@@ -165,45 +176,53 @@
         defaultMinute: 0,
         defaultSeconds: 0,
         allowInput: true,
-        clickOpens: true, // 保底
+        clickOpens: true,
+
+        onOpen() {
+            // 每次打开日历时，认为还没手动改过时间；一旦用户在面板里改了输入框，就会置 true
+            userEditedTime = false;
+        },
 
         onChange(selectedDates, dateStr, instance) {
             if (_syncing) return;
 
             const $start = document.getElementById('start');
             const $end   = document.getElementById('end');
-
-            // 保护：隐藏字段不存在时直接返回，避免异常
             if (!$start || !$end) return;
 
-            // 只要不是正好 2 个，就清空为初始化状态
+            // 未选满 2 个则清空隐藏字段
             if (selectedDates.length !== 2) {
                 $start.value = '';
                 $end.value = '';
                 return;
             }
 
-            // 选满 2 个：左 00:00:00，右 23:59:59.999
-            const s = new Date(selectedDates[0]); s.setHours(6, 0, 0, 0);
-            const e = new Date(selectedDates[1]); e.setHours(6, 0, 0, 0);
+            // 拷贝一份，避免直接改动 flatpickr 内部对象
+            const s = new Date(selectedDates[0]);
+            const e = new Date(selectedDates[1]);
 
-            // 如需回写到控件，且不触发 onChange（防止卡顿）
-            if (+s !== +selectedDates[0] || +e !== +selectedDates[1]) {
-                _syncing = true;
-                instance.setDate([s, e], false);
-                _syncing = false;
+            // 仅当开启规范化，且用户没有手动改过时间时，才贴到天边界
+            if (normalizeToDayBounds && !userEditedTime) {
+                // 左 00:00:00.000
+                s.setHours(6, 0, 0, 0);
+                // 右 23:59:59.999
+                e.setHours(6, 0, 0, 0);
+
+                // 如需回写到控件，且不触发 onChange（防止递归/卡顿）
+                if (+s !== +selectedDates[0] || +e !== +selectedDates[1]) {
+                    _syncing = true;
+                    instance.setDate([s, e], false);
+                    _syncing = false;
+                }
             }
 
-            // 同步隐藏字段
+            // 同步隐藏字段（优先 dayjs）
             if (typeof dayjs === 'function') {
                 $start.value = dayjs(s).format('YYYY-MM-DD HH:mm:ss');
                 $end.value   = dayjs(e).format('YYYY-MM-DD HH:mm:ss');
             } else {
-                // 兜底：不用 dayjs 也能写
-                const pad = n => String(n).padStart(2,'0');
-                const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                $start.value = fmt(s);
-                $end.value   = fmt(e);
+                $start.value = formatDate(s);
+                $end.value   = formatDate(e);
             }
         },
 
@@ -212,40 +231,50 @@
                 const container = instance && instance.calendarContainer;
                 if (!container) return;
 
+                // 监听“时间输入框”变化——只要用户碰过时/分/秒，就认为是手动编辑过时间
+                const timeBox = container.querySelector('.flatpickr-time');
+                if (timeBox) {
+                    // flatpickr 里这些输入都有 .flatpickr-hour / .flatpickr-minute / .flatpickr-second
+                    ['input', 'change'].forEach(ev => {
+                        timeBox.addEventListener(ev, () => { userEditedTime = true; }, { passive: true });
+                    });
+                }
+
                 // 已有则不重复加按钮
-                if (container.querySelector('.flatpickr-clear')) return;
+                if (!container.querySelector('.flatpickr-clear')) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.textContent = '清空';
+                    btn.className = 'flatpickr-clear btn btn-sm btn-light';
+                    btn.style.marginLeft = '8px';
 
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.textContent = '清空';
-                btn.className = 'flatpickr-clear btn btn-sm btn-light';
-                btn.style.marginLeft = '8px';
+                    btn.onclick = function () {
+                        instance.setDate([], true);
 
-                btn.onclick = function () {
-                    // 彻底清空为“刚初始化”
-                    _syncing = true;
-                    instance.setDate([], false); // 不触发 onChange
-                    _syncing = false;
+                        const $start = document.getElementById('start');
+                        const $end   = document.getElementById('end');
+                        if ($start) $start.value = '';
+                        if ($end)   $end.value   = '';
 
-                    // 清空原始 input 与 altInput 的显示
-                    if (instance.input) instance.input.value = '';
-                    if (instance.altInput) instance.altInput.value = '';
+                        // 兜底：强制同步输入框显示（不改值，只触发刷新）
+                        if (instance._input) {
+                            instance._input.dispatchEvent(new Event('input', { bubbles: true }));
+                            instance._input.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
 
-                    const $start = document.getElementById('start');
-                    const $end   = document.getElementById('end');
-                    if ($start) $start.value = '';
-                    if ($end)   $end.value   = '';
+                        requestAnimationFrame(() => {
+                            instance.close();
+                        });
+                    };
 
-                    instance.close();
-                };
 
-                const fpFooter =
-                    container.querySelector('.flatpickr-footer') ||
-                    container.querySelector('.flatpickr-time') ||
-                    container;
-                fpFooter.appendChild(btn);
+                    const fpFooter =
+                        container.querySelector('.flatpickr-footer') ||
+                        container.querySelector('.flatpickr-time') ||
+                        container;
+                    fpFooter.appendChild(btn);
+                }
             } catch (e) {
-                // 防止 onReady 报错导致控件完全不起效
                 console.error('flatpickr onReady error:', e);
             }
         }
@@ -382,6 +411,11 @@
     const c3 = echarts.init(document.getElementById('chartHourly'));
 
     async function loadCharts() {
+        function round2(n) {
+            const v = Number(n || 0);
+            return Math.round(v * 100) / 100; // 保持数值类型，四舍五入到两位
+        }
+
         const base =
             `start=${encodeURIComponent(startInput.value)}`
             + `&end=${encodeURIComponent(endInput.value)}`
@@ -396,21 +430,17 @@
         const wkX = (Object.keys(wkMap)).map(k=>wkMap[k]);
         const wkY = [1,2,3,4,5,6,7].map(i=>{
             const found = wk.find(x=>x.weekday===i);
-            return found ? found.total : 0;
+            return round2(found ? found.total : 0);  // ★ Y 数据两位
         });
         c1.setOption({
-            title: {text:'星期分布(日平均收入)'},
-            tooltip: {trigger:'axis'},
+            title: {text:'星期分布(总收入)'},
+            tooltip: { trigger:'axis', valueFormatter: v => round2(v).toFixed(2) }, // ★ tooltip 两位
             xAxis: {type:'category', data: wkX, axisLabel: { interval: 0, rotate: 30 }},
             yAxis: {
                 type: 'value',
-                axisLabel: {
-                    formatter: function (value) {
-                        return value.toFixed(2);
-                    }
-                }
+                axisLabel: { formatter: value => round2(value).toFixed(2) } // ★ 坐标轴显示两位
             },
-            series: [{type:'bar', data: wkY}]
+            series: [{ type:'bar', data: wkY }]
         });
 
         // 时段
@@ -419,24 +449,19 @@
         const order = ['早晨(6-9)','上午(9-11)','中午(11-14)','下午(14-18)','傍晚(18-21)','晚上(21-1)','凌晨(1-6)'];
         c2.setOption({
             title: {text:'时段分布(日平均收入)'},
-            tooltip: {trigger:'axis'},
-            xAxis: {
-                type: 'category',
-                data: order,
-                axisLabel: { interval: 0, rotate: 30 }
-            },
+            tooltip: { trigger:'axis', valueFormatter: v => round2(v).toFixed(2) },  // ★
+            xAxis: { type: 'category', data: order, axisLabel: { interval: 0, rotate: 30 } },
             yAxis: {
                 type: 'value',
-                axisLabel: {
-                    formatter: function (value) {
-                        return value.toFixed(2);
-                    }
-                }
+                axisLabel: { formatter: value => round2(value).toFixed(2) } // ★
             },
-            series: [{type:'bar', data: order.map(o => {
+            series: [{
+                type:'bar',
+                data: order.map(o => {
                     const f = tb.find(x=>x.bucket===o);
-                    return f ? f.total : 0;
-                })}]
+                    return round2(f ? f.total : 0); // ★ Y 数据两位
+                })
+            }]
         });
 
         // 小时
@@ -447,20 +472,19 @@
         for (let i = 0; i < 9; i++) hx.push(i);
         c3.setOption({
             title: {text:'小时分布(日平均收入)'},
-            tooltip: {trigger:'axis'},
-            xAxis: {type:'category', data: hx, axisLabel: { interval: 0, rotate: 30 }},
+            tooltip: { trigger:'axis', valueFormatter: v => round2(v).toFixed(2) },  // ★
+            xAxis: { type:'category', data: hx, axisLabel: { interval: 0, rotate: 30 }},
             yAxis: {
                 type: 'value',
-                axisLabel: {
-                    formatter: function (value) {
-                        return value.toFixed(2);
-                    }
-                }
+                axisLabel: { formatter: value => round2(value).toFixed(2) } // ★
             },
-            series: [{type:'line', data: hx.map(h=>{
+            series: [{
+                type:'line',
+                data: hx.map(h=>{
                     const f = hh.find(x=>x.hour===h);
-                    return f ? f.total : 0;
-                })}]
+                    return round2(f ? f.total : 0); // ★ Y 数据两位
+                })
+            }]
         });
     }
 

@@ -5,18 +5,33 @@
 
 <mapper namespace="com.enu9.bili.mapper.AnalyticsMapper">
 
-<!--    &lt;!&ndash; 星期分布：净收入（收入-支出） &ndash;&gt;-->
+    <!-- 公共：计算天数，至少为 1 -->
+    <sql id="durationDays">
+        (
+            GREATEST(
+            1,
+            TIMESTAMPDIFF(
+            SECOND,
+            COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn)),
+            COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
+            ) / 86400.0
+            )
+        )
+    </sql>
+
+<!--    &lt;!&ndash; 1) 星期分布：日均净额 &ndash;&gt;-->
 <!--    <select id="sumByWeekday" resultType="map">-->
 <!--        SELECT-->
 <!--        weekday,-->
+<!--        (-->
 <!--        SUM(CASE WHEN direction = 'INCOME'  THEN amount ELSE 0 END)-->
-<!--        - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END) AS total,-->
+<!--        - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END)-->
+<!--        ) / <include refid="durationDays"/> AS total,-->
 <!--        SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt-->
 <!--        FROM wx_pay_txn-->
-<!--        WHERE  1 = 1-->
-<!--        <if test="start != null and end != null">-->
-<!--            AND trade_time BETWEEN #{start} AND #{end}-->
-<!--        </if>-->
+<!--        WHERE trade_time BETWEEN-->
+<!--        COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))-->
+<!--        AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))-->
 <!--        <if test="counterparty != null and counterparty != ''">-->
 <!--            AND counterparty LIKE CONCAT('%', #{counterparty}, '%')-->
 <!--        </if>-->
@@ -35,6 +50,111 @@
 <!--        GROUP BY weekday-->
 <!--        ORDER BY weekday-->
 <!--    </select>-->
+
+    <!-- 2) 时段分布：日均净额 -->
+    <select id="sumByTimeBuckets" resultType="map">
+        SELECT
+        CASE
+        WHEN trade_hour BETWEEN 0  AND 5  THEN '凌晨(1-6)'
+        WHEN trade_hour BETWEEN 6  AND 8  THEN '早晨(6-9)'
+        WHEN trade_hour BETWEEN 9  AND 10 THEN '上午(9-11)'
+        WHEN trade_hour BETWEEN 11 AND 13 THEN '中午(11-14)'
+        WHEN trade_hour BETWEEN 14 AND 17 THEN '下午(14-18)'
+        WHEN trade_hour BETWEEN 18 AND 20 THEN '傍晚(18-21)'
+        WHEN trade_hour IN (21,22,23,0)  THEN '晚上(21-1)'
+        END AS bucket,
+        (
+        SUM(CASE WHEN direction = 'INCOME'  THEN amount ELSE 0 END)
+        - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END)
+        ) / <include refid="durationDays"/> AS total,
+        SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
+        FROM wx_pay_txn
+        WHERE trade_time BETWEEN
+        COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))
+        AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
+        <if test="counterparty != null and counterparty != ''">
+            AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
+        </if>
+        <if test="direction != null and direction != ''">
+            AND direction = #{direction}
+        </if>
+        <if test="minAmount != null">
+            AND amount &gt;= #{minAmount}
+        </if>
+        <if test="maxAmount != null">
+            AND amount &lt;= #{maxAmount}
+        </if>
+        <if test="product != null and product != ''">
+            AND product LIKE CONCAT('%', #{product}, '%')
+        </if>
+        GROUP BY bucket
+    </select>
+
+    <!-- 3) 小时分布：日均净额 -->
+    <select id="sumByHour" resultType="map">
+        <![CDATA[
+        SELECT
+            trade_hour AS "hour",
+            (
+                SUM(CASE WHEN direction = 'INCOME'  THEN amount ELSE 0 END)
+              - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END)
+            ) / ]]><include refid="durationDays"/><![CDATA[ AS total,
+            SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
+        FROM wx_pay_txn
+        WHERE trade_time BETWEEN
+              COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))
+          AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
+        ]]>
+        <if test="counterparty != null and counterparty != ''">
+            AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
+        </if>
+        <if test="direction != null and direction != ''">
+            AND direction = #{direction}
+        </if>
+        <if test="minAmount != null">
+            AND amount &gt;= #{minAmount}
+        </if>
+        <if test="maxAmount != null">
+            AND amount &lt;= #{maxAmount}
+        </if>
+        <if test="product != null and product != ''">
+            AND product LIKE CONCAT('%', #{product}, '%')
+        </if>
+        <![CDATA[
+        GROUP BY trade_hour
+        ORDER BY trade_hour
+        ]]>
+    </select>
+    <!-- 星期分布：净收入（收入-支出） -->
+    <select id="sumByWeekday" resultType="map">
+        SELECT
+        weekday,
+        SUM(CASE WHEN direction = 'INCOME'  THEN amount ELSE 0 END)
+        - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END) AS total,
+        SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
+        FROM wx_pay_txn
+        WHERE  1 = 1
+        <if test="start != null and end != null">
+            AND trade_time BETWEEN #{start} AND #{end}
+        </if>
+        <if test="counterparty != null and counterparty != ''">
+            AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
+        </if>
+        <if test="direction != null and direction != ''">
+            AND direction = #{direction}
+        </if>
+        <if test="minAmount != null">
+            AND amount &gt;= #{minAmount}
+        </if>
+        <if test="maxAmount != null">
+            AND amount &lt;= #{maxAmount}
+        </if>
+        <if test="product != null and product != ''">
+            AND product LIKE CONCAT('%', #{product}, '%')
+        </if>
+        GROUP BY weekday
+        ORDER BY weekday
+    </select>
 
 
 <!--    &lt;!&ndash; 自定义时段分布：净收入（收入-支出） &ndash;&gt;-->
@@ -110,182 +230,5 @@
 <!--    ORDER BY trade_hour-->
 <!--  ]]>-->
 <!--    </select>-->
-
-
-    <select id="sumByWeekday" resultType="map">
-        SELECT
-        weekday,
-        (
-        SUM(CASE WHEN direction = 'INCOME'  THEN amount ELSE 0 END)
-        - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END)
-        ) / NULLIF((
-        SELECT COUNT(DISTINCT DATE(t2.trade_time))
-        FROM wx_pay_txn t2
-        WHERE t2.trade_time BETWEEN
-        COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))
-        AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
-        <if test="counterparty != null and counterparty != ''">
-            AND t2.counterparty LIKE CONCAT('%', #{counterparty}, '%')
-        </if>
-        <if test="direction != null and direction != ''">
-            AND t2.direction = #{direction}
-        </if>
-        <if test="minAmount != null">
-            AND t2.amount &gt;= #{minAmount}
-        </if>
-        <if test="maxAmount != null">
-            AND t2.amount &lt;= #{maxAmount}
-        </if>
-        <if test="product != null and product != ''">
-            AND t2.product LIKE CONCAT('%', #{product}, '%')
-        </if>
-        ), 0) AS total,
-        SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
-        FROM wx_pay_txn
-        WHERE trade_time BETWEEN
-        COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))
-        AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
-        <if test="counterparty != null and counterparty != ''">
-            AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
-        </if>
-        <if test="direction != null and direction != ''">
-            AND direction = #{direction}
-        </if>
-        <if test="minAmount != null">
-            AND amount &gt;= #{minAmount}
-        </if>
-        <if test="maxAmount != null">
-            AND amount &lt;= #{maxAmount}
-        </if>
-        <if test="product != null and product != ''">
-            AND product LIKE CONCAT('%', #{product}, '%')
-        </if>
-        GROUP BY weekday
-        ORDER BY weekday
-    </select>
-
-
-
-    <select id="sumByTimeBuckets" resultType="map">
-        SELECT
-        CASE
-        WHEN trade_hour BETWEEN 1  AND 5  THEN '凌晨(1-6)'
-        WHEN trade_hour BETWEEN 6  AND 8  THEN '早晨(6-9)'
-        WHEN trade_hour BETWEEN 9  AND 10 THEN '上午(9-11)'
-        WHEN trade_hour BETWEEN 11 AND 13 THEN '中午(11-14)'
-        WHEN trade_hour BETWEEN 14 AND 17 THEN '下午(14-18)'
-        WHEN trade_hour BETWEEN 18 AND 20 THEN '傍晚(18-21)'
-        WHEN trade_hour IN (21,22,23,0) THEN '晚上(21-1)'
-        END AS bucket,
-        (
-        SUM(CASE WHEN direction = 'INCOME'  THEN amount ELSE 0 END)
-        - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END)
-        ) / NULLIF((
-        SELECT COUNT(DISTINCT DATE(t2.trade_time))
-        FROM wx_pay_txn t2
-        WHERE t2.trade_time BETWEEN
-        COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))
-        AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
-        <if test="counterparty != null and counterparty != ''">
-            AND t2.counterparty LIKE CONCAT('%', #{counterparty}, '%')
-        </if>
-        <if test="direction != null and direction != ''">
-            AND t2.direction = #{direction}
-        </if>
-        <if test="minAmount != null">
-            AND t2.amount &gt;= #{minAmount}
-        </if>
-        <if test="maxAmount != null">
-            AND t2.amount &lt;= #{maxAmount}
-        </if>
-        <if test="product != null and product != ''">
-            AND t2.product LIKE CONCAT('%', #{product}, '%')
-        </if>
-        ), 0) AS total,
-        SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
-        FROM wx_pay_txn
-        WHERE trade_time BETWEEN
-        COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))
-        AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
-        <if test="counterparty != null and counterparty != ''">
-            AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
-        </if>
-        <if test="direction != null and direction != ''">
-            AND direction = #{direction}
-        </if>
-        <if test="minAmount != null">
-            AND amount &gt;= #{minAmount}
-        </if>
-        <if test="maxAmount != null">
-            AND amount &lt;= #{maxAmount}
-        </if>
-        <if test="product != null and product != ''">
-            AND product LIKE CONCAT('%', #{product}, '%')
-        </if>
-        GROUP BY bucket
-    </select>
-
-
-    <!-- 小时分布：净收入（收入-支出） -->
-    <select id="sumByHour" resultType="map">
-        <![CDATA[
-  SELECT
-      trade_hour AS "hour",
-      (
-        SUM(CASE WHEN direction = 'INCOME'  THEN amount ELSE 0 END)
-        - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END)
-      ) / NULLIF((
-        SELECT COUNT(DISTINCT DATE(t2.trade_time))
-        FROM wx_pay_txn t2
-        WHERE t2.trade_time BETWEEN
-                COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))
-            AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
-  ]]>
-        <if test="counterparty != null and counterparty != ''">
-            AND t2.counterparty LIKE CONCAT('%', #{counterparty}, '%')
-        </if>
-        <if test="direction != null and direction != ''">
-            AND t2.direction = #{direction}
-        </if>
-        <if test="minAmount != null">
-            AND t2.amount &gt;= #{minAmount}
-        </if>
-        <if test="maxAmount != null">
-            AND t2.amount &lt;= #{maxAmount}
-        </if>
-        <if test="product != null and product != ''">
-            AND t2.product LIKE CONCAT('%', #{product}, '%')
-        </if>
-        <![CDATA[
-      ), 0) AS total,
-      SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
-  FROM wx_pay_txn
-  WHERE trade_time BETWEEN
-          COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))
-      AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
-  ]]>
-        <if test="counterparty != null and counterparty != ''">
-            AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
-        </if>
-        <if test="direction != null and direction != ''">
-            AND direction = #{direction}
-        </if>
-        <if test="minAmount != null">
-            AND amount &gt;= #{minAmount}
-        </if>
-        <if test="maxAmount != null">
-            AND amount &lt;= #{maxAmount}
-        </if>
-        <if test="product != null and product != ''">
-            AND product LIKE CONCAT('%', #{product}, '%')
-        </if>
-        <![CDATA[
-  GROUP BY trade_hour
-  ORDER BY trade_hour
-  ]]>
-    </select>
-
-
-
 
 </mapper>
