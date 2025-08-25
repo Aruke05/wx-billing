@@ -19,11 +19,11 @@ import java.util.Map;
 @RequestMapping("/api")
 public class ImportController {
     private final ImportService importService;
-
-    @PostMapping(value="/import/wechat", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Map<String,Object> importWechat(@RequestParam("file") MultipartFile file,
-                                           @RequestParam(value="uploadedBy", required=false) String uploadedBy) throws IOException {
-        ImportBatch batch = importService.importWeChatExcel(file, uploadedBy);
+    // ImportController.java
+    @PostMapping(value="/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String,Object> importBill(@RequestParam("file") MultipartFile file,
+                                         @RequestParam(value="uploadedBy", required=false) String uploadedBy) throws IOException {
+        ImportBatch batch = importService.importExcel(file, uploadedBy);
         return new HashMap<String,Object>(){{
             put("batchId", batch.getId());
             put("fileName", batch.getFileName());
@@ -34,4 +34,12 @@ public class ImportController {
             put("periodEnd", batch.getPeriodEnd());
         }};
     }
+
+    /** 兼容旧地址（内部转调新方法） */
+    @PostMapping(value="/import/wechat", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String,Object> importWechatCompat(@RequestParam("file") MultipartFile file,
+                                                 @RequestParam(value="uploadedBy", required=false) String uploadedBy) throws IOException {
+        return importBill(file, uploadedBy);
+    }
+
 }
