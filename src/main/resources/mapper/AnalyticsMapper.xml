@@ -13,8 +13,10 @@
         - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END) AS total,
         SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
         FROM wx_pay_txn
-        WHERE trade_time BETWEEN #{start} AND #{end}
-        AND direction IN ('INCOME','EXPENSE')
+        WHERE  1 = 1
+        <if test="start != null and end != null">
+            AND trade_time BETWEEN #{start} AND #{end}
+        </if>
         <if test="counterparty != null and counterparty != ''">
             AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
         </if>
@@ -36,7 +38,7 @@
     <select id="sumByTimeBuckets" resultType="map">
         SELECT
         CASE
-        WHEN trade_hour BETWEEN 0  AND 4  THEN '凌晨(1-4)'
+        WHEN trade_hour BETWEEN 1  AND 4  THEN '凌晨(1-4)'
         WHEN trade_hour BETWEEN 5  AND 7  THEN '早晨(5-7)'
         WHEN trade_hour BETWEEN 8 AND 10 THEN '上午(8-10)'
         WHEN trade_hour BETWEEN 11 AND 13 THEN '中午(11-13)'
@@ -48,8 +50,10 @@
         - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END) AS total,
         SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
         FROM wx_pay_txn
-        WHERE trade_time BETWEEN #{start} AND #{end}
-        AND direction IN ('INCOME','EXPENSE')
+        WHERE 1 = 1
+        <if test="start != null and end != null">
+            AND trade_time BETWEEN #{start} AND #{end}
+        </if>
         <if test="counterparty != null and counterparty != ''">
             AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
         </if>
@@ -75,9 +79,11 @@
           - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END) AS total,
         SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
     FROM wx_pay_txn
-    WHERE trade_time BETWEEN #{start} AND #{end}
-      AND direction IN ('INCOME','EXPENSE')
+    WHERE 1 = 1
   ]]>
+        <if test="start != null and end != null">
+            AND trade_time BETWEEN #{start} AND #{end}
+        </if>
         <if test="counterparty != null and counterparty != ''">
             AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
         </if>

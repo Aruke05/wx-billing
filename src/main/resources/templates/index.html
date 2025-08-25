@@ -139,7 +139,7 @@
     const dirInput = document.getElementById('direction');
     function fmt(d) { return dayjs(d).format('YYYY-MM-DD HH:mm:ss'); }
 
-    flatpickr('#rangePicker', {
+    window.rangePickerFp = flatpickr('#rangePicker', {
         mode: 'range',
         enableTime: true,
         enableSeconds: true,
@@ -148,23 +148,46 @@
         altFormat: 'Y-m-d H:i:S',
         dateFormat: 'Y-m-d H:i:S',
         locale: 'zh',
-        defaultHour: 0,      // 默认小时 = 0
-        defaultMinute: 0,    // 默认分钟 = 0
-        defaultSeconds: 0,   // 默认秒 = 0
+        defaultHour: 0,
+        defaultMinute: 0,
+        defaultSeconds: 0,
+        allowInput: true,
         onChange: function(selectedDates) {
             if (selectedDates.length === 2) {
                 document.getElementById('start').value = dayjs(selectedDates[0]).format('YYYY-MM-DD HH:mm:ss');
                 document.getElementById('end').value   = dayjs(selectedDates[1]).format('YYYY-MM-DD HH:mm:ss');
+            }
+        },
+        onReady: function(selectedDates, dateStr, instance) {
+            // 检查是否已经加过按钮
+            if (!instance.calendarContainer.querySelector('.flatpickr-clear')) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = '清空';
+                btn.className = 'flatpickr-clear btn btn-sm btn-light';
+                btn.style.marginLeft = '8px';
+                btn.onclick = function(e) {
+                    instance.clear(); // 清空flatpickr
+                    // 同步清空隐藏字段
+                    document.getElementById('start').value = dayjs(selectedDates[0]).format('YYYY-MM-DD HH:mm:ss');
+                    document.getElementById('end').value   = dayjs(selectedDates[1]).format('YYYY-MM-DD HH:mm:ss');
+                    instance.close(); // 关闭弹窗
+                };
+                // 加到按钮栏（和确认、现在按钮同级）
+                var fpFooter = instance.calendarContainer.querySelector('.flatpickr-footer') ||
+                    instance.calendarContainer.querySelector('.flatpickr-time') ||
+                    instance.calendarContainer;
+                fpFooter.appendChild(btn);
             }
         }
     });
 
 
     // 默认给一个近7天区间
-    const now = dayjs();
-    const last7 = now.subtract(6, 'day').startOf('day');
-    document.getElementById('start').value = fmt(last7);
-    document.getElementById('end').value = fmt(now.endOf('day'));
+    // const now = dayjs();
+    // const last7 = now.subtract(6, 'day').startOf('day');
+    // document.getElementById('start').value = fmt(last7);
+    // document.getElementById('end').value = fmt(now.endOf('day'));
     // 上传
     document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         e.preventDefault();
