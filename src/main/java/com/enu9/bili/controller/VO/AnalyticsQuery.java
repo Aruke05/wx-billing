@@ -24,6 +24,8 @@ public class AnalyticsQuery {
 
     private String product;
 
+    private String channelType;
+
     private BigDecimal minAmount;
 
     private BigDecimal maxAmount;

@@ -41,6 +41,9 @@ public class TxnController {
         if (StringUtils.hasText(q.getProduct())) {
             w.like("product", q.getProduct());
         }
+        if (StringUtils.hasText(q.getChannelType())) {
+            w.like("channel_type", q.getChannelType());
+        }
 
 
         // 其他条件
@@ -73,6 +76,9 @@ public class TxnController {
         }
         if (StringUtils.hasText(q.getProduct())) {
             w.like("product", q.getProduct());
+        }
+        if (StringUtils.hasText(q.getChannelType())) {
+            w.like("channel_type", q.getChannelType());
         }
 
 
@@ -161,6 +167,9 @@ public class TxnController {
         }
         if (StringUtils.hasText(query.getProduct())) {
             qw.like("product", query.getProduct());
+        }
+        if (StringUtils.hasText(query.getChannelType())) {
+            qw.like("channel_type", query.getChannelType());
         }
         int deleted = wxPayTxnMapper.delete(qw);
         return Collections.singletonMap("deleted", deleted);

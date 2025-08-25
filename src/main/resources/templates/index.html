@@ -65,7 +65,15 @@
                     <label>商品</label>
                     <input class="form-control" id="product" placeholder="模糊匹配">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
+                    <label>平台</label>
+                    <select class="form-control" id="channelType">
+                        <option value="">全部</option>
+                        <option value="ALIPAY">支付宝</option>
+                        <option value="WECHAT">微信</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
                     <label>方向</label>
                     <select class="form-control" id="direction">
                         <option value="">全部</option>
@@ -176,6 +184,8 @@
     const cpInput = document.getElementById('counterparty');
     const dirInput = document.getElementById('direction');
     const prodInput  = document.getElementById('product');
+    const channelInput = document.getElementById('channelType');
+
     function fmt(d) { return dayjs(d).format('YYYY-MM-DD HH:mm:ss'); }
 
     // 如果已经初始化过，先销毁，避免重复绑定导致不弹出
@@ -378,6 +388,7 @@
             counterparty: cpInput.value,
             direction: dirInput.value,
             product: prodInput.value,
+            channelType: channelInput.value,
             minAmount: document.getElementById('minAmount').value,
             maxAmount: document.getElementById('maxAmount').value
         });
@@ -488,6 +499,7 @@
             + `&direction=${encodeURIComponent(dirInput.value)}`
             + `&minAmount=${encodeURIComponent(document.getElementById('minAmount').value)}`
             + `&maxAmount=${encodeURIComponent(document.getElementById('maxAmount').value)}`
+            + `&channelType=${encodeURIComponent(channelInput.value)}`
             + `&product=${encodeURIComponent(prodInput.value)}`;
         let res = await fetch('/api/analytics/weekday?' + base);
         let wk = await res.json();
@@ -587,6 +599,7 @@
                 counterparty: cpInput.value,
                 direction: dirInput.value,
                 product: prodInput.value,
+                channelType: channelInput.value,
                 minAmount: document.getElementById('minAmount').value,
                 maxAmount: document.getElementById('maxAmount').value
                 // 其他字段

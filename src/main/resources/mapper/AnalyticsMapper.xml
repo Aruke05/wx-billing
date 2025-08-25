@@ -87,6 +87,9 @@
         <if test="product != null and product != ''">
             AND product LIKE CONCAT('%', #{product}, '%')
         </if>
+        <if test="channelType != null and channelType != ''">
+            AND channel_type = #{channelType}
+        </if>
         GROUP BY bucket
     </select>
 
@@ -120,6 +123,9 @@
         <if test="product != null and product != ''">
             AND product LIKE CONCAT('%', #{product}, '%')
         </if>
+        <if test="channelType != null and channelType != ''">
+            AND channel_type = #{channelType}
+        </if>
         <![CDATA[
         GROUP BY trade_hour
         ORDER BY trade_hour
@@ -151,6 +157,9 @@
         </if>
         <if test="product != null and product != ''">
             AND product LIKE CONCAT('%', #{product}, '%')
+        </if>
+        <if test="channelType != null and channelType != ''">
+            AND channel_type = #{channelType}
         </if>
         GROUP BY weekday
         ORDER BY weekday

@@ -12,6 +12,10 @@ spring:
     driver-class-name: org.h2.Driver
     username: mercury
     password: enu911
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
   sql:
     init:
       mode: always
@@ -19,7 +23,3 @@ spring:
   jackson:
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss
-
-# 方便本地查看
-spring.h2.console.enabled: true
-spring.h2.console.path: /h2-console
