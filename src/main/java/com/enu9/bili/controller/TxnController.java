@@ -78,7 +78,7 @@ public class TxnController {
             w.like("product", q.getProduct());
         }
         if (StringUtils.hasText(q.getChannelType())) {
-            w.like("channel_type", q.getChannelType());
+            w.eq("channel_type", q.getChannelType());
         }
 
 
