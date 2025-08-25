@@ -145,6 +145,13 @@
     const prodInput  = document.getElementById('product');
     function fmt(d) { return dayjs(d).format('YYYY-MM-DD HH:mm:ss'); }
 
+    // 如果已经初始化过，先销毁，避免重复绑定导致不弹出
+    if (window.rangePickerFp && typeof window.rangePickerFp.destroy === 'function') {
+        try { window.rangePickerFp.destroy(); } catch (e) { /* ignore */ }
+    }
+
+    let _syncing = false;
+
     window.rangePickerFp = flatpickr('#rangePicker', {
         mode: 'range',
         enableTime: true,
@@ -158,32 +165,88 @@
         defaultMinute: 0,
         defaultSeconds: 0,
         allowInput: true,
-        onChange: function(selectedDates) {
-            if (selectedDates.length === 2) {
-                document.getElementById('start').value = dayjs(selectedDates[0]).format('YYYY-MM-DD HH:mm:ss');
-                document.getElementById('end').value   = dayjs(selectedDates[1]).format('YYYY-MM-DD HH:mm:ss');
+        clickOpens: true, // 保底
+
+        onChange(selectedDates, dateStr, instance) {
+            if (_syncing) return;
+
+            const $start = document.getElementById('start');
+            const $end   = document.getElementById('end');
+
+            // 保护：隐藏字段不存在时直接返回，避免异常
+            if (!$start || !$end) return;
+
+            // 只要不是正好 2 个，就清空为初始化状态
+            if (selectedDates.length !== 2) {
+                $start.value = '';
+                $end.value = '';
+                return;
+            }
+
+            // 选满 2 个：左 00:00:00，右 23:59:59.999
+            const s = new Date(selectedDates[0]); s.setHours(6, 0, 0, 0);
+            const e = new Date(selectedDates[1]); e.setHours(6, 0, 0, 0);
+
+            // 如需回写到控件，且不触发 onChange（防止卡顿）
+            if (+s !== +selectedDates[0] || +e !== +selectedDates[1]) {
+                _syncing = true;
+                instance.setDate([s, e], false);
+                _syncing = false;
+            }
+
+            // 同步隐藏字段
+            if (typeof dayjs === 'function') {
+                $start.value = dayjs(s).format('YYYY-MM-DD HH:mm:ss');
+                $end.value   = dayjs(e).format('YYYY-MM-DD HH:mm:ss');
+            } else {
+                // 兜底：不用 dayjs 也能写
+                const pad = n => String(n).padStart(2,'0');
+                const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                $start.value = fmt(s);
+                $end.value   = fmt(e);
             }
         },
-        onReady: function(selectedDates, dateStr, instance) {
-            // 检查是否已经加过按钮
-            if (!instance.calendarContainer.querySelector('.flatpickr-clear')) {
-                var btn = document.createElement('button');
+
+        onReady(selectedDates, dateStr, instance) {
+            try {
+                const container = instance && instance.calendarContainer;
+                if (!container) return;
+
+                // 已有则不重复加按钮
+                if (container.querySelector('.flatpickr-clear')) return;
+
+                const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.textContent = '清空';
                 btn.className = 'flatpickr-clear btn btn-sm btn-light';
                 btn.style.marginLeft = '8px';
-                btn.onclick = function(e) {
-                    instance.clear(); // 清空flatpickr
-                    // 同步清空隐藏字段
-                    document.getElementById('start').value = dayjs(selectedDates[0]).format('YYYY-MM-DD HH:mm:ss');
-                    document.getElementById('end').value   = dayjs(selectedDates[1]).format('YYYY-MM-DD HH:mm:ss');
-                    instance.close(); // 关闭弹窗
+
+                btn.onclick = function () {
+                    // 彻底清空为“刚初始化”
+                    _syncing = true;
+                    instance.setDate([], false); // 不触发 onChange
+                    _syncing = false;
+
+                    // 清空原始 input 与 altInput 的显示
+                    if (instance.input) instance.input.value = '';
+                    if (instance.altInput) instance.altInput.value = '';
+
+                    const $start = document.getElementById('start');
+                    const $end   = document.getElementById('end');
+                    if ($start) $start.value = '';
+                    if ($end)   $end.value   = '';
+
+                    instance.close();
                 };
-                // 加到按钮栏（和确认、现在按钮同级）
-                var fpFooter = instance.calendarContainer.querySelector('.flatpickr-footer') ||
-                    instance.calendarContainer.querySelector('.flatpickr-time') ||
-                    instance.calendarContainer;
+
+                const fpFooter =
+                    container.querySelector('.flatpickr-footer') ||
+                    container.querySelector('.flatpickr-time') ||
+                    container;
                 fpFooter.appendChild(btn);
+            } catch (e) {
+                // 防止 onReady 报错导致控件完全不起效
+                console.error('flatpickr onReady error:', e);
             }
         }
     });
