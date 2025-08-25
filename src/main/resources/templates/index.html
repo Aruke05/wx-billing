@@ -335,7 +335,7 @@
         // 时段
         res = await fetch('/api/analytics/time-buckets?' + base);
         const tb = await res.json();
-        const order = ['凌晨(1-4)','早晨(5-7)','上午(8-10)','中午(11-13)','下午(14-17)','傍晚(18-20)','晚上(21-0)'];
+        const order = ['凌晨(1-6)','早晨(6-9)','上午(9-11)','中午(11-14)','下午(14-18)','傍晚(18-21)','晚上(21-1)'];
         c2.setOption({
             title: {text:'时段分布(收入)'},
             tooltip: {trigger:'axis'},
