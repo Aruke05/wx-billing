@@ -2,6 +2,10 @@ server:
   port: 8080
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 200MB
   datasource:
     # 本地文件保存在项目根目录 ./data/wx_bill（会生成 wx_bill.mv.db 文件）
     url: jdbc:h2:file:./data/wx_bill;MODE=MySQL;DATABASE_TO_UPPER=false;AUTO_SERVER=TRUE

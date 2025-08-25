@@ -24,7 +24,7 @@
             <form id="uploadForm">
                 <div class="form-row">
                     <div class="col-md-4">
-                        <input type="file" name="file" class="form-control-file" required/>
+                        <input type="file" name="file" class="form-control-file" multiple required/>
                     </div>
                     <div class="col-md-3">
                         <input type="text" name="uploadedBy" class="form-control" placeholder="上传人（可选）"/>
@@ -320,14 +320,45 @@
     document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target;
-        const fd = new FormData(form);
-        const res = await fetch('/api/import/wechat', { method: 'POST', body: fd });
+        const fd = new FormData();
+
+        const files = form.querySelector('input[type="file"]').files;
+        const uploadedBy = form.elements['uploadedBy']?.value || '';
+
+        if (!files || files.length === 0) return;
+
+        // 同名 key 多次 append 即可：file, file, file...
+        for (const f of files) fd.append('file', f);
+        if (uploadedBy) fd.append('uploadedBy', uploadedBy);
+
+        const res = await fetch('/api/import', { method: 'POST', body: fd });
         const data = await res.json();
-        document.getElementById('uploadMsg').innerText =
-            `批次 #${data.batchId} 导入成功：总行=${data.recordCount}，新增=${data.insertedCount}，重复=${data.duplicatedCount}。` +
-            (data.periodStart ? ` 覆盖：${data.periodStart} ~ ${data.periodEnd}` : '');
+
+        // 兼容单/多文件两种返回
+        const $msg = document.getElementById('uploadMsg');
+
+        if (Array.isArray(data.batches)) {
+            // 批量
+            const lines = data.batches.map(b =>
+                `#${b.batchId} 「${b.fileName}」：总行=${b.recordCount}，新增=${b.insertedCount}，重复=${b.duplicatedCount}` +
+                (b.periodStart ? `，覆盖 ${b.periodStart} ~ ${b.periodEnd}` : '')
+            );
+            const sum = data.summary;
+            $msg.innerText =
+                `共 ${data.totalFiles} 个文件导入成功。\n` +
+                lines.join('\n') + '\n' +
+                `合计：总行=${sum.recordCount}，新增=${sum.insertedCount}，重复=${sum.duplicatedCount}` +
+                (sum.periodStart ? `，覆盖 ${sum.periodStart} ~ ${sum.periodEnd}` : '');
+        } else {
+            // 旧格式（单文件）
+            $msg.innerText =
+                `批次 #${data.batchId} 导入成功：总行=${data.recordCount}，新增=${data.insertedCount}，重复=${data.duplicatedCount}。` +
+                (data.periodStart ? ` 覆盖：${data.periodStart} ~ ${data.periodEnd}` : '');
+        }
+
         reloadAll();
     });
+
 
     // 英文枚举 -> 中文展示
     const DIRECTION_CN = { INCOME: '收入', EXPENSE: '支出', NEUTRAL: '中性交易' };
