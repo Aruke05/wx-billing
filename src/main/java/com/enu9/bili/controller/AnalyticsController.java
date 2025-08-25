@@ -21,11 +21,11 @@ public class AnalyticsController {
     public Map<String,Object> summary(AnalyticsQuery q) {
         Map<String,Object> resp = new LinkedHashMap<>();
         List<Map<String,Object>> weekday = mapper.sumByWeekday(q.getStart(), q.getEnd(),
-                q.getCounterparty(), q.getDirection(), q.getMinAmount(), q.getMaxAmount());
+                q.getCounterparty(), q.getDirection(), q.getProduct(), q.getMinAmount(), q.getMaxAmount());
         List<Map<String,Object>> buckets = mapper.sumByTimeBuckets(q.getStart(), q.getEnd(),
-                q.getCounterparty(), q.getDirection(), q.getMinAmount(), q.getMaxAmount());
+                q.getCounterparty(), q.getDirection(), q.getProduct(), q.getMinAmount(), q.getMaxAmount());
         List<Map<String,Object>> hours   = mapper.sumByHour(q.getStart(), q.getEnd(),
-                q.getCounterparty(), q.getDirection(), q.getMinAmount(), q.getMaxAmount());
+                q.getCounterparty(), q.getDirection(), q.getProduct(), q.getMinAmount(), q.getMaxAmount());
         resp.put("weekday", weekday);
         resp.put("timeBuckets", buckets);
         resp.put("hourly", hours);
@@ -35,18 +35,18 @@ public class AnalyticsController {
     @GetMapping("/weekday")
     public List<Map<String,Object>> weekday(AnalyticsQuery q) {
         return mapper.sumByWeekday(q.getStart(), q.getEnd(),
-                q.getCounterparty(), q.getDirection(), q.getMinAmount(), q.getMaxAmount());
+                q.getCounterparty(), q.getDirection(), q.getProduct(), q.getMinAmount(), q.getMaxAmount());
     }
 
     @GetMapping("/time-buckets")
     public List<Map<String, Object>> timeBuckets(AnalyticsQuery q) {
         return mapper.sumByTimeBuckets(q.getStart(), q.getEnd(),
-                q.getCounterparty(), q.getDirection(), q.getMinAmount(), q.getMaxAmount());
+                q.getCounterparty(), q.getDirection(), q.getProduct(), q.getMinAmount(), q.getMaxAmount());
     }
 
     @GetMapping("/hourly")
     public List<Map<String, Object>> hourly(AnalyticsQuery q) {
         return mapper.sumByHour(q.getStart(), q.getEnd(),
-                q.getCounterparty(), q.getDirection(), q.getMinAmount(), q.getMaxAmount());
+                q.getCounterparty(), q.getDirection(), q.getProduct(), q.getMinAmount(), q.getMaxAmount());
     }
 }

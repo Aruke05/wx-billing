@@ -61,7 +61,11 @@
                     <label>交易对方</label>
                     <input class="form-control" id="counterparty" placeholder="模糊匹配">
                 </div>
-                <div class="col-md-1">
+                <div class="col-md-2">
+                    <label>商品</label>
+                    <input class="form-control" id="product" placeholder="模糊匹配">
+                </div>
+                <div class="col-md-2">
                     <label>方向</label>
                     <select class="form-control" id="direction">
                         <option value="">全部</option>
@@ -74,7 +78,7 @@
                     <label>&nbsp;</label>
                     <button type="button" class="btn btn-success btn-block" onclick="reloadAll()">应用筛选</button>
                 </div>
-                <div class="col-md-1">
+                <div class="col-md-2">
                     <label>&nbsp;</label>
                     <button type="button" class="btn btn-danger btn-block" onclick="deleteByFilter()">删除筛选</button>
                 </div>
@@ -137,6 +141,7 @@
     const endInput = document.getElementById('end');
     const cpInput = document.getElementById('counterparty');
     const dirInput = document.getElementById('direction');
+    const prodInput  = document.getElementById('product');
     function fmt(d) { return dayjs(d).format('YYYY-MM-DD HH:mm:ss'); }
 
     window.rangePickerFp = flatpickr('#rangePicker', {
@@ -217,6 +222,7 @@
             end: endInput.value,
             counterparty: cpInput.value,
             direction: dirInput.value,
+            product: prodInput.value,
             minAmount: document.getElementById('minAmount').value,
             maxAmount: document.getElementById('maxAmount').value
         });
@@ -315,7 +321,8 @@
             + `&counterparty=${encodeURIComponent(cpInput.value)}`
             + `&direction=${encodeURIComponent(dirInput.value)}`
             + `&minAmount=${encodeURIComponent(document.getElementById('minAmount').value)}`
-            + `&maxAmount=${encodeURIComponent(document.getElementById('maxAmount').value)}`;
+            + `&maxAmount=${encodeURIComponent(document.getElementById('maxAmount').value)}`
+            + `&product=${encodeURIComponent(prodInput.value)}`;
         let res = await fetch('/api/analytics/weekday?' + base);
         let wk = await res.json();
         const wkMap = {1:'周一',2:'周二',3:'周三',4:'周四',5:'周五',6:'周六',7:'周日'};
@@ -335,7 +342,7 @@
         // 时段
         res = await fetch('/api/analytics/time-buckets?' + base);
         const tb = await res.json();
-        const order = ['凌晨(1-6)','早晨(6-9)','上午(9-11)','中午(11-14)','下午(14-18)','傍晚(18-21)','晚上(21-1)'];
+        const order = ['早晨(6-9)','上午(9-11)','中午(11-14)','下午(14-18)','傍晚(18-21)','晚上(21-1)','凌晨(1-6)'];
         c2.setOption({
             title: {text:'时段分布(收入)'},
             tooltip: {trigger:'axis'},
@@ -354,7 +361,9 @@
         // 小时
         res = await fetch('/api/analytics/hourly?' + base);
         const hh = await res.json();
-        const hx = Array.from({length:24}, (_,i)=>i);
+        const hx = [];
+        for (let i = 9; i < 24; i++) hx.push(i);
+        for (let i = 0; i < 9; i++) hx.push(i);
         c3.setOption({
             title: {text:'小时分布(收入)'},
             tooltip: {trigger:'axis'},
@@ -400,6 +409,7 @@
                 end: endInput.value,
                 counterparty: cpInput.value,
                 direction: dirInput.value,
+                product: prodInput.value,
                 minAmount: document.getElementById('minAmount').value,
                 maxAmount: document.getElementById('maxAmount').value
                 // 其他字段

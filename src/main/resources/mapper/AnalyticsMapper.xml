@@ -29,6 +29,9 @@
         <if test="maxAmount != null">
             AND amount &lt;= #{maxAmount}
         </if>
+        <if test="product != null and product != ''">
+            AND product LIKE CONCAT('%', #{product}, '%')
+        </if>
         GROUP BY weekday
         ORDER BY weekday
     </select>
@@ -66,6 +69,9 @@
         <if test="maxAmount != null">
             AND amount &lt;= #{maxAmount}
         </if>
+        <if test="product != null and product != ''">
+            AND product LIKE CONCAT('%', #{product}, '%')
+        </if>
         GROUP BY bucket
     </select>
 
@@ -95,6 +101,9 @@
         </if>
         <if test="maxAmount != null">
             AND amount &lt;= #{maxAmount}
+        </if>
+        <if test="product != null and product != ''">
+            AND product LIKE CONCAT('%', #{product}, '%')
         </if>
         <![CDATA[
     GROUP BY trade_hour

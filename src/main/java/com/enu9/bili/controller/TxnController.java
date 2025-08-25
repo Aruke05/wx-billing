@@ -35,6 +35,10 @@ public class TxnController {
         } else if (q.getEnd() != null) {
             w.le("trade_time", q.getEnd());
         }
+        if (StringUtils.hasText(q.getProduct())) {
+            w.like("product", q.getProduct());
+        }
+
 
         // 其他条件
         if (StringUtils.hasText(q.getTradeType()))   w.eq("trade_type", q.getTradeType());
@@ -88,6 +92,9 @@ public class TxnController {
         }
         if (query.getMaxAmount() != null) {
             qw.le("amount", query.getMaxAmount());
+        }
+        if (StringUtils.hasText(query.getProduct())) {
+            qw.like("product", query.getProduct());
         }
         int deleted = wxPayTxnMapper.delete(qw);
         return Collections.singletonMap("deleted", deleted);

@@ -19,6 +19,7 @@ public class TxnQuery {
     private LocalDateTime end;
 
     // getter / setter
+    private String product;
     private String tradeType;
     private String direction;     // INCOME/EXPENSE/NEUTRAL
     private String status;

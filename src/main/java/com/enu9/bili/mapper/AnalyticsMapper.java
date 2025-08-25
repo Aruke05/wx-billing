@@ -15,6 +15,7 @@ public interface AnalyticsMapper {
                                            @Param("end") LocalDateTime end,
                                            @Param("counterparty") String counterparty,
                                            @Param("direction") String direction,
+                                           @Param("product") String product,
                                            @Param("minAmount") BigDecimal minAmount,
                                            @Param("maxAmount") BigDecimal maxAmount);
 
@@ -22,6 +23,7 @@ public interface AnalyticsMapper {
                                                @Param("end") LocalDateTime end,
                                                @Param("counterparty") String counterparty,
                                                @Param("direction") String direction,
+                                               @Param("product") String product,
                                                @Param("minAmount") BigDecimal minAmount,
                                                @Param("maxAmount") BigDecimal maxAmount);
 
@@ -29,6 +31,7 @@ public interface AnalyticsMapper {
                                         @Param("end") LocalDateTime end,
                                         @Param("counterparty") String counterparty,
                                         @Param("direction") String direction,
+                                        @Param("product") String product,
                                         @Param("minAmount") BigDecimal minAmount,
                                         @Param("maxAmount") BigDecimal maxAmount);
 

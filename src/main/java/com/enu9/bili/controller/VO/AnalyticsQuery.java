@@ -22,6 +22,8 @@ public class AnalyticsQuery {
 
     private String direction;
 
+    private String product;
+
     private BigDecimal minAmount;
 
     private BigDecimal maxAmount;
