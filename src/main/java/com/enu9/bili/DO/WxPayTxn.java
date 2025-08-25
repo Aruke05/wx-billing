@@ -27,6 +27,7 @@ public class WxPayTxn {
     private String direction;    // INCOME/EXPENSE/NEUTRAL
     private BigDecimal amount;   // 正数
 
+    private String channelType;
     private String payMethod;
     private String status;
 

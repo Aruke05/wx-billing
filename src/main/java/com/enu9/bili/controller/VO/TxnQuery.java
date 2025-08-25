@@ -25,6 +25,7 @@ public class TxnQuery {
     private String status;
     private String payMethod;
     private String counterparty;  // 模糊查询
+    private String channelType;
     private BigDecimal minAmount;
     private BigDecimal maxAmount;
 

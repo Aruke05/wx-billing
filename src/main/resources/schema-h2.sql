@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS wx_pay_txn (
                                           trade_hour INT NOT NULL,
                                           weekday INT NOT NULL,
                                           trade_type VARCHAR(64) NOT NULL,
+    channel_type VARCHAR(64),
     counterparty VARCHAR(128),
     product VARCHAR(256),
     direction VARCHAR(16) NOT NULL,

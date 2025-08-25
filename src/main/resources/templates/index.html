@@ -111,6 +111,7 @@
                     <th>金额</th>
                     <th>方式</th>
                     <th>状态</th>
+                    <th>平台</th>
                     <th>交易单号</th>
                 </tr>
                 </thead>
@@ -208,6 +209,7 @@
 
     // 英文枚举 -> 中文展示
     const DIRECTION_CN = { INCOME: '收入', EXPENSE: '支出', NEUTRAL: '中性交易' };
+    const CHANNEL_CN = { WECHAT: '微信', ALIPAY: '支付宝'};
 
     // 表格分页
     let page = 1;
@@ -243,6 +245,7 @@
         (data.records || []).forEach(r => {
             const tr = document.createElement('tr');
             const dirCn = DIRECTION_CN[r.direction] || r.direction || '';
+            const channelCN = CHANNEL_CN[r.channelType] || r.channelType || '';
             tr.innerHTML = `
                 <td><input type="checkbox" class="row-check" value="${r.orderId}"></td>
                 <td>${ dayjs(r.tradeTime).format('YYYY-MM-DD HH:mm:ss') }</td>
@@ -252,6 +255,7 @@
                 <td>${r.amount}</td>
                 <td>${r.payMethod||''}</td>
                 <td>${r.status||''}</td>
+                <td>${channelCN}</td>
                 <td>${r.orderId}</td>
             `;
             tbody.appendChild(tr);
