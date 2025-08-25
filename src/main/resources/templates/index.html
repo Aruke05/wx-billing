@@ -245,7 +245,7 @@
             const dirCn = DIRECTION_CN[r.direction] || r.direction || '';
             tr.innerHTML = `
                 <td><input type="checkbox" class="row-check" value="${r.orderId}"></td>
-                <td>${r.tradeTime}</td>
+                <td>${ dayjs(r.tradeTime).format('YYYY-MM-DD HH:mm:ss') }</td>
                 <td>${r.counterparty||''}</td>
                 <td>${r.product||''}</td>
                 <td>${dirCn}</td>
