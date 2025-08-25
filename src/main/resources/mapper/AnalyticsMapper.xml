@@ -21,6 +21,12 @@
         <if test="direction != null and direction != ''">
             AND direction = #{direction}
         </if>
+        <if test="minAmount != null">
+            AND amount &gt;= #{minAmount}
+        </if>
+        <if test="maxAmount != null">
+            AND amount &lt;= #{maxAmount}
+        </if>
         GROUP BY weekday
         ORDER BY weekday
     </select>
@@ -50,6 +56,12 @@
         <if test="direction != null and direction != ''">
             AND direction = #{direction}
         </if>
+        <if test="minAmount != null">
+            AND amount &gt;= #{minAmount}
+        </if>
+        <if test="maxAmount != null">
+            AND amount &lt;= #{maxAmount}
+        </if>
         GROUP BY bucket
     </select>
 
@@ -71,6 +83,12 @@
         </if>
         <if test="direction != null and direction != ''">
             AND direction = #{direction}
+        </if>
+        <if test="minAmount != null">
+            AND amount &gt;= #{minAmount}
+        </if>
+        <if test="maxAmount != null">
+            AND amount &lt;= #{maxAmount}
         </if>
         <![CDATA[
     GROUP BY trade_hour

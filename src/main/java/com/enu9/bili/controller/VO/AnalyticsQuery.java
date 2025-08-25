@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
-public class TxnQuery {
+public class AnalyticsQuery {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -18,15 +18,11 @@ public class TxnQuery {
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime end;
 
-    // getter / setter
-    private String tradeType;
-    private String direction;     // INCOME/EXPENSE/NEUTRAL
-    private String status;
-    private String payMethod;
-    private String counterparty;  // 模糊查询
-    private BigDecimal minAmount;
-    private BigDecimal maxAmount;
+    private String counterparty;
 
-    private Integer page = 1;
-    private Integer size = 20;
+    private String direction;
+
+    private BigDecimal minAmount;
+
+    private BigDecimal maxAmount;
 }

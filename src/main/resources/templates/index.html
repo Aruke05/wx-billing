@@ -10,6 +10,8 @@
         .chart { width: 100%; height: 380px; margin-top: 10px; }
         .card { margin-bottom: 16px; }
     </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
 </head>
 <body>
 <div class="container-fluid">
@@ -41,19 +43,25 @@
         <div class="card-header">筛选条件</div>
         <div class="card-body">
             <form id="filterForm" class="form-row">
-                <div class="col-md-3">
-                    <label>开始时间</label>
-                    <input type="datetime-local" step="1" class="form-control" id="start" th:value="${defaultStart}">
+                <div class="col-md-4">
+                    <label>时间区间</label>
+                    <input id="rangePicker" class="form-control" placeholder="选择时间区间">
+                    <!-- 保留隐藏字段，用于 fetch 时拼接 -->
+                    <input type="hidden" id="start">
+                    <input type="hidden" id="end">
                 </div>
-                <div class="col-md-3">
-                    <label>结束时间</label>
-                    <input type="datetime-local" step="1" class="form-control" id="end" th:value="${defaultEnd}">
+                <div class="col-md-2">
+                    <label>金额范围</label>
+                    <div class="input-group">
+                        <input type="number" step="0.01" class="form-control" id="minAmount" placeholder="最小金额">
+                        <input type="number" step="0.01" class="form-control" id="maxAmount" placeholder="最大金额">
+                    </div>
                 </div>
                 <div class="col-md-2">
                     <label>交易对方</label>
                     <input class="form-control" id="counterparty" placeholder="模糊匹配">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <label>方向</label>
                     <select class="form-control" id="direction">
                         <option value="">全部</option>
@@ -65,6 +73,10 @@
                 <div class="col-md-2">
                     <label>&nbsp;</label>
                     <button type="button" class="btn btn-success btn-block" onclick="reloadAll()">应用筛选</button>
+                </div>
+                <div class="col-md-1">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-danger btn-block" onclick="deleteByFilter()">删除筛选</button>
                 </div>
             </form>
         </div>
@@ -80,13 +92,25 @@
     <!-- 表格 -->
     <div class="card">
         <div class="card-header">交易明细</div>
+        <div class="col-md-2" style="margin-top: 2vh">
+            <button class="btn btn-danger btn-sm mb-2" id="deleteSelected">删除所选</button>
+        </div>
         <div class="card-body">
             <table class="table table-sm table-striped" id="tbl">
                 <thead>
                 <tr>
-                    <th>时间</th><th>对方</th><th>商品</th><th>方向</th><th>金额</th><th>方式</th><th>状态</th><th>交易单号</th>
+                    <th><input type="checkbox" id="selectAll"></th>
+                    <th>时间</th>
+                    <th>对方</th>
+                    <th>商品</th>
+                    <th>方向</th>
+                    <th>金额</th>
+                    <th>方式</th>
+                    <th>状态</th>
+                    <th>交易单号</th>
                 </tr>
                 </thead>
+
                 <tbody></tbody>
             </table>
 
@@ -105,12 +129,42 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
 <script>
     const startInput = document.getElementById('start');
     const endInput = document.getElementById('end');
     const cpInput = document.getElementById('counterparty');
     const dirInput = document.getElementById('direction');
+    function fmt(d) { return dayjs(d).format('YYYY-MM-DD HH:mm:ss'); }
 
+    flatpickr('#rangePicker', {
+        mode: 'range',
+        enableTime: true,
+        enableSeconds: true,
+        time_24hr: true,
+        altInput: true,
+        altFormat: 'Y-m-d H:i:S',
+        dateFormat: 'Y-m-d H:i:S',
+        locale: 'zh',
+        defaultHour: 0,      // 默认小时 = 0
+        defaultMinute: 0,    // 默认分钟 = 0
+        defaultSeconds: 0,   // 默认秒 = 0
+        onChange: function(selectedDates) {
+            if (selectedDates.length === 2) {
+                document.getElementById('start').value = dayjs(selectedDates[0]).format('YYYY-MM-DD HH:mm:ss');
+                document.getElementById('end').value   = dayjs(selectedDates[1]).format('YYYY-MM-DD HH:mm:ss');
+            }
+        }
+    });
+
+
+    // 默认给一个近7天区间
+    const now = dayjs();
+    const last7 = now.subtract(6, 'day').startOf('day');
+    document.getElementById('start').value = fmt(last7);
+    document.getElementById('end').value = fmt(now.endOf('day'));
     // 上传
     document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -136,10 +190,18 @@
     async function loadTable(append=false) {
         const params = new URLSearchParams({
             page, size,
-            start: startInput.value, end: endInput.value,
-            counterparty: cpInput.value, direction: dirInput.value
+            start: startInput.value,
+            end: endInput.value,
+            counterparty: cpInput.value,
+            direction: dirInput.value,
+            minAmount: document.getElementById('minAmount').value,
+            maxAmount: document.getElementById('maxAmount').value
         });
+
+
         const res = await fetch('/api/transactions?' + params.toString());
+
+
         const data = await res.json();
 
         total = data.total || 0;
@@ -152,16 +214,20 @@
         (data.records || []).forEach(r => {
             const tr = document.createElement('tr');
             const dirCn = DIRECTION_CN[r.direction] || r.direction || '';
-            tr.innerHTML = `<td>${r.tradeTime}</td>
-                    <td>${r.counterparty||''}</td>
-                    <td>${r.product||''}</td>
-                    <td>${dirCn}</td>
-                    <td>${r.amount}</td>
-                    <td>${r.payMethod||''}</td>
-                    <td>${r.status||''}</td>
-                    <td>${r.orderId}</td>`;
+            tr.innerHTML = `
+                <td><input type="checkbox" class="row-check" value="${r.orderId}"></td>
+                <td>${r.tradeTime}</td>
+                <td>${r.counterparty||''}</td>
+                <td>${r.product||''}</td>
+                <td>${dirCn}</td>
+                <td>${r.amount}</td>
+                <td>${r.payMethod||''}</td>
+                <td>${r.status||''}</td>
+                <td>${r.orderId}</td>
+            `;
             tbody.appendChild(tr);
         });
+
 
         renderPager();
     }
@@ -220,10 +286,13 @@
     const c3 = echarts.init(document.getElementById('chartHourly'));
 
     async function loadCharts() {
-        const base = `start=${encodeURIComponent(startInput.value)}`
+        const base =
+            `start=${encodeURIComponent(startInput.value)}`
             + `&end=${encodeURIComponent(endInput.value)}`
             + `&counterparty=${encodeURIComponent(cpInput.value)}`
-            + `&direction=${encodeURIComponent(dirInput.value)}`;        // 星期
+            + `&direction=${encodeURIComponent(dirInput.value)}`
+            + `&minAmount=${encodeURIComponent(document.getElementById('minAmount').value)}`
+            + `&maxAmount=${encodeURIComponent(document.getElementById('maxAmount').value)}`;
         let res = await fetch('/api/analytics/weekday?' + base);
         let wk = await res.json();
         const wkMap = {1:'周一',2:'周二',3:'周三',4:'周四',5:'周五',6:'周六',7:'周日'};
@@ -274,6 +343,51 @@
                 })}]
         });
     }
+
+    //删除相关功能
+    //删除所选
+    document.getElementById('deleteSelected').onclick = async function() {
+        const checked = Array.from(document.querySelectorAll('.row-check:checked')).map(chk => chk.value);
+        if (!checked.length) { alert('请先选择要删除的行'); return; }
+        if (!confirm('确定要删除选中的' + checked.length + '条数据吗？')) return;
+        const res = await fetch('/api/transactions/delete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ orderIds: checked })
+        });
+        const data = await res.json();
+        alert('删除成功：' + data.deleted + ' 条');
+        reloadAll();
+    };
+    //全选
+    document.getElementById('selectAll').onclick = function() {
+        const all = document.querySelectorAll('.row-check');
+        for (const c of all) c.checked = this.checked;
+    };
+    //删除筛选
+    async function deleteByFilter() {
+        if (!confirm('确定要删除当前筛选下的所有数据吗？')) return;
+
+        // 这里加上 res =
+        const res = await fetch('/api/transactions/delete-by-filter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                start: startInput.value,
+                end: endInput.value,
+                counterparty: cpInput.value,
+                direction: dirInput.value,
+                minAmount: document.getElementById('minAmount').value,
+                maxAmount: document.getElementById('maxAmount').value
+                // 其他字段
+            })
+        });
+
+        const data = await res.json();
+        alert('删除成功：' + data.deleted + ' 条');
+        reloadAll();
+    }
+
 
     function reloadAll() { page = 1; loadTable(false); loadCharts(); }
     // 初次加载
