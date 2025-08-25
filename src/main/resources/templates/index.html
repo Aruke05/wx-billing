@@ -103,6 +103,36 @@
             <button class="btn btn-danger btn-sm mb-2" id="deleteSelected">删除所选</button>
         </div>
         <div class="card-body">
+            <!-- 统计概览 -->
+            <div id="statsBar" class="mb-3">
+                <div class="row g-3">
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card gradient-green">
+                            <div class="label">总收入</div>
+                            <div class="value" id="stat-income">—</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card gradient-red">
+                            <div class="label">总支出</div>
+                            <div class="value" id="stat-expense">—</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card gradient-blue">
+                            <div class="label">净额</div>
+                            <div class="value" id="stat-net">—</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card gradient-gray">
+                            <div class="label">收入笔数 / 平均</div>
+                            <div class="value"><span id="stat-income-count">0</span> / <span id="stat-income-avg">—</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <table class="table table-sm table-striped" id="tbl">
                 <thead>
                 <tr>
@@ -321,10 +351,7 @@
             maxAmount: document.getElementById('maxAmount').value
         });
 
-
         const res = await fetch('/api/transactions?' + params.toString());
-
-
         const data = await res.json();
 
         total = data.total || 0;
@@ -339,23 +366,30 @@
             const dirCn = DIRECTION_CN[r.direction] || r.direction || '';
             const channelCN = CHANNEL_CN[r.channelType] || r.channelType || '';
             tr.innerHTML = `
-                <td><input type="checkbox" class="row-check" value="${r.orderId}"></td>
-                <td>${ dayjs(r.tradeTime).format('YYYY-MM-DD HH:mm:ss') }</td>
-                <td>${r.counterparty||''}</td>
-                <td>${r.product||''}</td>
-                <td>${dirCn}</td>
-                <td>${r.amount}</td>
-                <td>${r.payMethod||''}</td>
-                <td>${r.status||''}</td>
-                <td>${channelCN}</td>
-                <td>${r.orderId}</td>
-            `;
+      <tr>
+        <td><input type="checkbox" class="row-check" value="${r.orderId}"></td>
+        <td>${ dayjs(r.tradeTime).format('YYYY-MM-DD HH:mm:ss') }</td>
+        <td>${r.counterparty||''}</td>
+        <td>${r.product||''}</td>
+        <td>${dirCn}</td>
+        <td>${r.amount}</td>
+        <td>${r.payMethod||''}</td>
+        <td>${r.status||''}</td>
+        <td>${channelCN}</td>
+        <td>${r.orderId}</td>
+      </tr>
+    `;
             tbody.appendChild(tr);
         });
 
+        // === 新增：统计本次 records 并更新统计卡片 ===
+        if (!append) {
+            calcTotalsFromApi();
+        }
 
         renderPager();
     }
+
 
     // 渲染分页条
     function renderPager() {
@@ -533,10 +567,137 @@
         reloadAll();
     }
 
+    // ===== 统计逻辑 =====
 
-    function reloadAll() { page = 1; loadTable(false); loadCharts(); }
+    // 全局累计（支持 append=true 时的追加统计）
+    let totals = { income: 0, expense: 0, incomeCount: 0, expenseCount: 0 };
+
+    /**
+     * 判断是否为“收入方向”
+     * 根据你的后端枚举自行调整关键词（已兼容常见中英文/别名）
+     */
+    function isIncome(direction) {
+        const d = (direction || '').toString().toUpperCase();
+        return [
+            'IN', 'INCOME', 'RECEIVE', 'RECEIPT',
+            'SELL', 'SELL_OUT',     // 如果你的业务“卖出”为入账
+            '入', '收入', '收款', '卖出'
+        ].some(k => d.includes(k));
+    }
+
+    /**
+     * 判断是否为“支出方向”
+     */
+    function isExpense(direction) {
+        const d = (direction || '').toString().toUpperCase();
+        return [
+            'OUT', 'OUTCOME', 'PAY', 'PURCHASE', 'BUY',
+            '支出', '付款', '买入'
+        ].some(k => d.includes(k));
+    }
+
+    /** 货币格式（默认 CNY，如有需要改 'CNY' 为你的币种） */
+    const fmtMoney = (n) => new Intl.NumberFormat('zh-CN', {
+        style: 'currency',
+        currency: 'CNY',
+        maximumFractionDigits: 2
+    }).format(n || 0);
+
+    /** 计算本次 records 的合计；append=true 则在已有 totals 上继续累加 */
+    async function calcTotalsFromApi() {
+        const params = new URLSearchParams({
+            // 统计维度与列表过滤一致，但忽略分页
+            start: startInput.value,
+            end: endInput.value,
+            counterparty: cpInput.value,
+            direction: dirInput.value,
+            product: prodInput.value,
+            minAmount: document.getElementById('minAmount').value,
+            maxAmount: document.getElementById('maxAmount').value
+        });
+
+        const res = await fetch('/api/transactions/summary?' + params.toString(), { method: 'GET' });
+        if (!res.ok) {
+            console.error('fetch summary failed', res.status);
+            return;
+        }
+        const s = await res.json(); // 期望后端返回 { income, expense, net, incomeCount }
+        totals = {
+            income: Number(s.income) || 0,
+            expense: Number(s.expense) || 0,
+            incomeCount: Number(s.incomeCount) || 0,
+            expenseCount: Number(s.expenseCount) || 0
+        };
+        updateStatsUI();
+    }
+
+    /** 更新 UI 展示 */
+    function updateStatsUI() {
+        const net = totals.income - totals.expense;
+        const avgIncome = totals.incomeCount ? totals.income / totals.incomeCount : 0;
+
+        const $income = document.getElementById('stat-income');
+        const $expense = document.getElementById('stat-expense');
+        const $net = document.getElementById('stat-net');
+        const $incomeCount = document.getElementById('stat-income-count');
+        const $incomeAvg = document.getElementById('stat-income-avg');
+
+        if (!$income || !$expense || !$net) return; // 统计区不存在时跳过
+
+        $income.innerText = fmtMoney(totals.income);
+        $expense.innerText = fmtMoney(totals.expense);
+        $net.innerText = fmtMoney(net);
+        $incomeCount.innerText = totals.incomeCount;
+        $incomeAvg.innerText = fmtMoney(avgIncome);
+
+        // 净额颜色提示
+        $net.classList.remove('text-success', 'text-danger');
+        if (net > 0) $net.classList.add('text-success');
+        else if (net < 0) $net.classList.add('text-danger');
+    }
+
+    function reloadAll() { page = 1; loadTable(false); loadCharts();updateStatsUI(); }
     // 初次加载
     reloadAll();
 </script>
 </body>
 </html>
+<style>
+    /* 美化统计卡片 */
+    .stat-card{
+        background: var(--bg, #f8f9fa);
+        border-radius: 0.9rem;
+        padding: 12px 14px;
+        box-shadow: 0 4px 16px rgba(0,0,0,.05);
+        border: 1px solid rgba(0,0,0,.05);
+    }
+    .stat-card .label{
+        font-size:.85rem;
+        color:#6c757d;
+        letter-spacing:.02em;
+    }
+    .stat-card .value{
+        font-size:1.25rem;
+        font-weight:700;
+        line-height:1.3;
+    }
+    .gradient-green{ --bg: linear-gradient(180deg,#e8fff1, #f8fff9); }
+    .gradient-red{   --bg: linear-gradient(180deg,#fff0f0, #fff8f8); }
+    .gradient-blue{  --bg: linear-gradient(180deg,#eef6ff, #f7fbff); }
+    .gradient-gray{  --bg: linear-gradient(180deg,#f6f6f6, #fcfcfc); }
+
+    /* 统计条吸顶（可选） */
+    #statsBar{
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        backdrop-filter: saturate(120%) blur(4px);
+    }
+
+    /* 暗色模式优化（可选） */
+    @media (prefers-color-scheme: dark){
+        .stat-card{ border-color: rgba(255,255,255,.08); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 2px 12px rgba(0,0,0,.25); }
+        .stat-card .label{ color:#b8c1cc; }
+    }
+
+</style>

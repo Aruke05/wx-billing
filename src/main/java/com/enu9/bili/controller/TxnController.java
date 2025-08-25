@@ -5,11 +5,14 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.enu9.bili.DO.WxPayTxn;
 import com.enu9.bili.controller.VO.TxnQuery;
+import com.enu9.bili.controller.VO.TxnSummaryVO;
 import com.enu9.bili.mapper.WxPayTxnMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +57,69 @@ public class TxnController {
 
         // selectPage 自动返回 records、total、size、current、pages
         return wxPayTxnMapper.selectPage(page, w);
+    }
+
+    @GetMapping("/summary")
+    public TxnSummaryVO summary(TxnQuery q){
+        QueryWrapper<WxPayTxn> w = new QueryWrapper<>();
+
+        // 时间范围
+        if (q.getStart() != null && q.getEnd() != null) {
+            w.between("trade_time", q.getStart(), q.getEnd());
+        } else if (q.getStart() != null) {
+            w.ge("trade_time", q.getStart());
+        } else if (q.getEnd() != null) {
+            w.le("trade_time", q.getEnd());
+        }
+        if (StringUtils.hasText(q.getProduct())) {
+            w.like("product", q.getProduct());
+        }
+
+
+        // 其他条件
+        if (StringUtils.hasText(q.getTradeType()))   w.eq("trade_type", q.getTradeType());
+        if (StringUtils.hasText(q.getDirection()))   w.eq("direction", q.getDirection());
+        if (StringUtils.hasText(q.getStatus()))      w.eq("status", q.getStatus());
+        if (StringUtils.hasText(q.getPayMethod()))   w.eq("pay_method", q.getPayMethod());
+        if (StringUtils.hasText(q.getCounterparty()))w.like("counterparty", q.getCounterparty());
+        if (q.getMinAmount() != null)                w.ge("amount", q.getMinAmount());
+        if (q.getMaxAmount() != null)                w.le("amount", q.getMaxAmount());
+        List<WxPayTxn> wxPayTxns = wxPayTxnMapper.selectList(w);
+        TxnSummaryVO txnSummaryVO = new TxnSummaryVO();
+
+        if (wxPayTxns != null && !wxPayTxns.isEmpty()) {
+            BigDecimal income = BigDecimal.ZERO;
+            BigDecimal expense = BigDecimal.ZERO;
+            int incomeCount = 0;
+            int expenseCount = 0;
+
+            for (WxPayTxn txn : wxPayTxns) {
+                BigDecimal amt = txn.getAmount() == null ? BigDecimal.ZERO : txn.getAmount();
+                String dir = txn.getDirection();
+
+                // 判断方向，direction = INCOME / EXPENSE / NEUTRAL
+                if ("INCOME".equalsIgnoreCase(dir)) {
+                    income = income.add(amt);
+                    incomeCount++;
+                } else if ("EXPENSE".equalsIgnoreCase(dir)) {
+                    expense = expense.add(amt);
+                    expenseCount++;
+                } else {
+                    // 如果是 NEUTRAL 或其它，按需处理，这里忽略
+                }
+            }
+
+            txnSummaryVO.setIncome(income);
+            txnSummaryVO.setExpense(expense);
+            txnSummaryVO.setNet(income.subtract(expense));
+            txnSummaryVO.setIncomeCount(incomeCount);
+            txnSummaryVO.setExpenseCount(expenseCount);
+            if (incomeCount > 0) {
+                txnSummaryVO.setAvgIncome(income.divide(BigDecimal.valueOf(incomeCount), 2, RoundingMode.HALF_UP));
+            }
+        }
+
+        return txnSummaryVO;
     }
 
     @PostMapping("/delete")
