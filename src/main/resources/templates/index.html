@@ -336,10 +336,17 @@
             return found ? found.total : 0;
         });
         c1.setOption({
-            title: {text:'星期分布(收入)'},
+            title: {text:'星期分布(日平均收入)'},
             tooltip: {trigger:'axis'},
             xAxis: {type:'category', data: wkX, axisLabel: { interval: 0, rotate: 30 }},
-            yAxis: {type:'value'},
+            yAxis: {
+                type: 'value',
+                axisLabel: {
+                    formatter: function (value) {
+                        return value.toFixed(2);
+                    }
+                }
+            },
             series: [{type:'bar', data: wkY}]
         });
 
@@ -348,14 +355,21 @@
         const tb = await res.json();
         const order = ['早晨(6-9)','上午(9-11)','中午(11-14)','下午(14-18)','傍晚(18-21)','晚上(21-1)','凌晨(1-6)'];
         c2.setOption({
-            title: {text:'时段分布(收入)'},
+            title: {text:'时段分布(日平均收入)'},
             tooltip: {trigger:'axis'},
             xAxis: {
                 type: 'category',
                 data: order,
                 axisLabel: { interval: 0, rotate: 30 }
             },
-            yAxis: {type:'value'},
+            yAxis: {
+                type: 'value',
+                axisLabel: {
+                    formatter: function (value) {
+                        return value.toFixed(2);
+                    }
+                }
+            },
             series: [{type:'bar', data: order.map(o => {
                     const f = tb.find(x=>x.bucket===o);
                     return f ? f.total : 0;
@@ -369,10 +383,17 @@
         for (let i = 9; i < 24; i++) hx.push(i);
         for (let i = 0; i < 9; i++) hx.push(i);
         c3.setOption({
-            title: {text:'小时分布(收入)'},
+            title: {text:'小时分布(日平均收入)'},
             tooltip: {trigger:'axis'},
             xAxis: {type:'category', data: hx, axisLabel: { interval: 0, rotate: 30 }},
-            yAxis: {type:'value'},
+            yAxis: {
+                type: 'value',
+                axisLabel: {
+                    formatter: function (value) {
+                        return value.toFixed(2);
+                    }
+                }
+            },
             series: [{type:'line', data: hx.map(h=>{
                     const f = hh.find(x=>x.hour===h);
                     return f ? f.total : 0;
