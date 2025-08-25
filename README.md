@@ -4,9 +4,8 @@
 
 支持上传 **微信/支付宝导出的账单 Excel 文件**，自动落库并进行多维度汇总分析（按时间段、星期、小时等），并提供前端可视化看板。  
 
-![image.png](https://s2.loli.net/2025/08/25/eCaGDAuLVQgIPbs.png)
-![image.png](https://s2.loli.net/2025/08/25/Nygj3AeaVwIRKnm.png)
-
+![image.png](https://s2.loli.net/2025/08/25/S6BRQ534jG1CFkI.png)
+![image.png](https://s2.loli.net/2025/08/25/vWYnZkDRFidQfsV.png)
 ---
 
 ## 功能特性  
