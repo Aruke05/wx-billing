@@ -25,3 +25,7 @@ spring:
   jackson:
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss
+  thymeleaf:
+    prefix: file:./ext/templates/
+    suffix: .html
+    cache: false
