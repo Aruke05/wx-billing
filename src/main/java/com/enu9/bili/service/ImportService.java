@@ -3,9 +3,9 @@ package com.enu9.bili.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.enu9.bili.DO.ImportBatch;
-import com.enu9.bili.DO.WxPayTxn;
+import com.enu9.bili.DO.payTxn;
 import com.enu9.bili.mapper.ImportBatchMapper;
-import com.enu9.bili.mapper.WxPayTxnMapper;
+import com.enu9.bili.mapper.payTxnMapper;
 import com.enu9.bili.service.Parser.BillParser;
 import com.enu9.config.ExcelUtil;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ import com.alibaba.excel.exception.ExcelAnalysisStopException;
 @RequiredArgsConstructor
 public class ImportService {
 
-    private final WxPayTxnMapper txnMapper;
+    private final payTxnMapper txnMapper;
     private final ImportBatchMapper batchMapper;
 
     // 注入全部策略（Spring 会收集所有实现 BillParser 的 @Component）
@@ -55,7 +55,7 @@ public class ImportService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("未找到解析策略: " + ch));
 
-        List<WxPayTxn> parsed = parser.parse(bytes, batch.getId());
+        List<payTxn> parsed = parser.parse(bytes, batch.getId());
 
         if (parsed.isEmpty()) {
             batch.setRecordCount(0);
@@ -66,22 +66,22 @@ public class ImportService {
         }
 
         // 统计区间 + 记录数
-        LocalDateTime minT = parsed.stream().map(WxPayTxn::getTradeTime).min(LocalDateTime::compareTo).get();
-        LocalDateTime maxT = parsed.stream().map(WxPayTxn::getTradeTime).max(LocalDateTime::compareTo).get();
+        LocalDateTime minT = parsed.stream().map(payTxn::getTradeTime).min(LocalDateTime::compareTo).get();
+        LocalDateTime maxT = parsed.stream().map(payTxn::getTradeTime).max(LocalDateTime::compareTo).get();
         batch.setPeriodStart(minT);
         batch.setPeriodEnd(maxT);
         batch.setRecordCount(parsed.size());
 
         // 文件内 + 库内去重（仅对非空 orderId）
         int fileDup = 0;
-        Map<String, WxPayTxn> byOrderId = new LinkedHashMap<>();
-        for (WxPayTxn t : parsed) {
+        Map<String, payTxn> byOrderId = new LinkedHashMap<>();
+        for (payTxn t : parsed) {
             String oid = trimToNull(t.getOrderId());
             if (oid == null) continue;
             if (byOrderId.putIfAbsent(oid, t) != null) fileDup++;
         }
-        List<WxPayTxn> keep = new ArrayList<>();
-        for (WxPayTxn t : parsed) if (trimToNull(t.getOrderId()) == null) keep.add(t);
+        List<payTxn> keep = new ArrayList<>();
+        for (payTxn t : parsed) if (trimToNull(t.getOrderId()) == null) keep.add(t);
         keep.addAll(byOrderId.values());
 
         int dbDup = 0;
@@ -91,7 +91,7 @@ public class ImportService {
             List<String> oids = new ArrayList<>(uniqueOids);
             for (List<String> chunk : chunks(oids, 800)) {
                 if (chunk.isEmpty()) continue;
-                QueryWrapper<WxPayTxn> qw = new QueryWrapper<>();
+                QueryWrapper<payTxn> qw = new QueryWrapper<>();
                 qw.select("order_id").in("order_id", chunk);
                 txnMapper.selectList(qw).forEach(e -> { if (e.getOrderId()!=null) exists.add(e.getOrderId()); });
             }
@@ -104,7 +104,7 @@ public class ImportService {
 
         batch.setDuplicatedCount(fileDup + dbDup);
 
-        for (WxPayTxn t : keep) txnMapper.insert(t);
+        for (payTxn t : keep) txnMapper.insert(t);
         batch.setInsertedCount(keep.size());
         batchMapper.updateById(batch);
         return batch;

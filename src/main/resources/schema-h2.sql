@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS wx_pay_txn (
+CREATE TABLE IF NOT EXISTS pay_txn (
                                           id BIGINT PRIMARY KEY AUTO_INCREMENT,
                                           trade_time TIMESTAMP NOT NULL,
                                           trade_date DATE NOT NULL,
@@ -32,11 +32,11 @@ CREATE TABLE IF NOT EXISTS import_batch (
     );
 
 -- 索引
-CREATE UNIQUE INDEX IF NOT EXISTS uk_order_id ON wx_pay_txn(order_id);
-CREATE INDEX IF NOT EXISTS idx_trade_time   ON wx_pay_txn(trade_time);
-CREATE INDEX IF NOT EXISTS idx_trade_date   ON wx_pay_txn(trade_date);
-CREATE INDEX IF NOT EXISTS idx_weekday      ON wx_pay_txn(weekday);
-CREATE INDEX IF NOT EXISTS idx_direction    ON wx_pay_txn(direction);
-CREATE INDEX IF NOT EXISTS idx_pay_method   ON wx_pay_txn(pay_method);
-CREATE INDEX IF NOT EXISTS idx_status       ON wx_pay_txn(status);
-CREATE INDEX IF NOT EXISTS idx_import_batch ON wx_pay_txn(import_batch_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_order_id ON pay_txn(order_id);
+CREATE INDEX IF NOT EXISTS idx_trade_time   ON pay_txn(trade_time);
+CREATE INDEX IF NOT EXISTS idx_trade_date   ON pay_txn(trade_date);
+CREATE INDEX IF NOT EXISTS idx_weekday      ON pay_txn(weekday);
+CREATE INDEX IF NOT EXISTS idx_direction    ON pay_txn(direction);
+CREATE INDEX IF NOT EXISTS idx_pay_method   ON pay_txn(pay_method);
+CREATE INDEX IF NOT EXISTS idx_status       ON pay_txn(status);
+CREATE INDEX IF NOT EXISTS idx_import_batch ON pay_txn(import_batch_id);

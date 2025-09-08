@@ -10,8 +10,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("wx_pay_txn")
-public class WxPayTxn {
+@TableName("pay_txn")
+public class payTxn {
     @TableId(type = IdType.AUTO)
     private Long id;
 

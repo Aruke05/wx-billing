@@ -12,8 +12,8 @@
             1,
             TIMESTAMPDIFF(
             SECOND,
-            COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn)),
-            COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
+            COALESCE(#{start}, (SELECT MIN(trade_time) FROM pay_txn)),
+            COALESCE(#{end},   (SELECT MAX(trade_time) FROM pay_txn))
             ) / 86400.0
             )
         )
@@ -28,10 +28,10 @@
 <!--        - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END)-->
 <!--        ) / <include refid="durationDays"/> AS total,-->
 <!--        SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt-->
-<!--        FROM wx_pay_txn-->
+<!--        FROM pay_txn-->
 <!--        WHERE trade_time BETWEEN-->
-<!--        COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))-->
-<!--        AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))-->
+<!--        COALESCE(#{start}, (SELECT MIN(trade_time) FROM pay_txn))-->
+<!--        AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM pay_txn))-->
 <!--        <if test="counterparty != null and counterparty != ''">-->
 <!--            AND counterparty LIKE CONCAT('%', #{counterparty}, '%')-->
 <!--        </if>-->
@@ -68,10 +68,10 @@
         - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END)
         ) / <include refid="durationDays"/> AS total,
         SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
-        FROM wx_pay_txn
+        FROM pay_txn
         WHERE trade_time BETWEEN
-        COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))
-        AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
+        COALESCE(#{start}, (SELECT MIN(trade_time) FROM pay_txn))
+        AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM pay_txn))
         <if test="counterparty != null and counterparty != ''">
             AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
         </if>
@@ -103,10 +103,10 @@
               - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END)
             ) / ]]><include refid="durationDays"/><![CDATA[ AS total,
             SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
-        FROM wx_pay_txn
+        FROM pay_txn
         WHERE trade_time BETWEEN
-              COALESCE(#{start}, (SELECT MIN(trade_time) FROM wx_pay_txn))
-          AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM wx_pay_txn))
+              COALESCE(#{start}, (SELECT MIN(trade_time) FROM pay_txn))
+          AND COALESCE(#{end},   (SELECT MAX(trade_time) FROM pay_txn))
         ]]>
         <if test="counterparty != null and counterparty != ''">
             AND counterparty LIKE CONCAT('%', #{counterparty}, '%')
@@ -138,7 +138,7 @@
         SUM(CASE WHEN direction = 'INCOME'  THEN amount ELSE 0 END)
         - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END) AS total,
         SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt
-        FROM wx_pay_txn
+        FROM pay_txn
         WHERE  1 = 1
         <if test="start != null and end != null">
             AND trade_time BETWEEN #{start} AND #{end}
@@ -181,7 +181,7 @@
 <!--        SUM(CASE WHEN direction = 'INCOME'  THEN amount ELSE 0 END)-->
 <!--        - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END) AS total,-->
 <!--        SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt-->
-<!--        FROM wx_pay_txn-->
+<!--        FROM pay_txn-->
 <!--        WHERE 1 = 1-->
 <!--        <if test="start != null and end != null">-->
 <!--            AND trade_time BETWEEN #{start} AND #{end}-->
@@ -213,7 +213,7 @@
 <!--        SUM(CASE WHEN direction = 'INCOME'  THEN amount ELSE 0 END)-->
 <!--          - SUM(CASE WHEN direction = 'EXPENSE' THEN amount ELSE 0 END) AS total,-->
 <!--        SUM(CASE WHEN direction IN ('INCOME','EXPENSE') THEN 1 ELSE 0 END) AS cnt-->
-<!--    FROM wx_pay_txn-->
+<!--    FROM pay_txn-->
 <!--    WHERE 1 = 1-->
 <!--  ]]>-->
 <!--        <if test="start != null and end != null">-->

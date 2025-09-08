@@ -6,7 +6,7 @@ import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.event.AnalysisEventListener;
 import com.alibaba.excel.exception.ExcelAnalysisStopException;
 import com.enu9.bili.DO.WxExcelRow;
-import com.enu9.bili.DO.WxPayTxn;
+import com.enu9.bili.DO.payTxn;
 import com.enu9.bili.DO.WxDict;
 
 import com.enu9.bili.service.Parser.BillParser;
@@ -27,7 +27,7 @@ public class WechatBillParser implements BillParser {
     public Channel channel() { return Channel.WECHAT; }
 
     @Override
-    public List<WxPayTxn> parse(byte[] bytes, Long batchId) throws IOException {
+    public List<payTxn> parse(byte[] bytes, Long batchId) throws IOException {
         final AtomicInteger headerRowIndex = new AtomicInteger(-1);
 
         AnalysisEventListener<Map<Integer, String>> headerFinder =
@@ -48,7 +48,7 @@ public class WechatBillParser implements BillParser {
 
         int headRowNum = headerRowIndex.get() + 1;
 
-        final List<WxPayTxn> result = new ArrayList<>();
+        final List<payTxn> result = new ArrayList<>();
 
         AnalysisEventListener<WxExcelRow> dataListener =
                 new AnalysisEventListener<WxExcelRow>() {
@@ -59,7 +59,7 @@ public class WechatBillParser implements BillParser {
                             if (tradeTimeStr == null) return;
                             LocalDateTime tt = WxDict.parseTime(tradeTimeStr);
 
-                            WxPayTxn t = new WxPayTxn();
+                            payTxn t = new payTxn();
                             t.setTradeTime(tt);
                             t.setTradeDate(tt.toLocalDate());
                             t.setTradeHour(tt.getHour());

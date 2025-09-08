@@ -5,7 +5,7 @@ import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.event.AnalysisEventListener;
 import com.alibaba.excel.exception.ExcelAnalysisStopException;
-import com.enu9.bili.DO.WxPayTxn;
+import com.enu9.bili.DO.payTxn;
 import com.enu9.bili.service.Parser.BillParser;
 import org.springframework.stereotype.Component;
 
@@ -24,14 +24,14 @@ public class AlipayBillParser implements BillParser {
     public Channel channel() { return Channel.ALIPAY; }
 
     @Override
-    public List<WxPayTxn> parse(byte[] bytes, Long batchId) throws IOException {
+    public List<payTxn> parse(byte[] bytes, Long batchId) throws IOException {
         if (bytes == null || bytes.length == 0) return Collections.emptyList();
         // XLSX/XLS（ZIP 头 PK） 走 EasyExcel；否则按 CSV(GB18030/UTF-8) 解析
         return isXlsxOrXls(bytes) ? parseXlsx(bytes, batchId) : parseCsv(bytes, batchId);
     }
 
     // ------ A) XLS/XLSX：不依赖中文表头；遇到第一条可解析时间行，上一行视为表头 ------
-    private List<WxPayTxn> parseXlsx(byte[] bytes, Long batchId) throws IOException {
+    private List<payTxn> parseXlsx(byte[] bytes, Long batchId) throws IOException {
         final AtomicInteger headerRowIndex = new AtomicInteger(-1);
         final Map<String, Integer> col = new HashMap<String, Integer>();
 
@@ -75,7 +75,7 @@ public class AlipayBillParser implements BillParser {
         if (headerRowIndex.get() == -1) throw new IllegalStateException("未找到表头行（支付宝）");
 
         int headRowNum = headerRowIndex.get() + 1;
-        final List<WxPayTxn> out = new ArrayList<WxPayTxn>();
+        final List<payTxn> out = new ArrayList<payTxn>();
 
         AnalysisEventListener<Map<Integer, String>> dataReader = new AnalysisEventListener<Map<Integer, String>>() {
             @Override public void invoke(Map<Integer, String> row, AnalysisContext context) {
@@ -84,7 +84,7 @@ public class AlipayBillParser implements BillParser {
                     if (isBlank(timeStr)) return;
                     LocalDateTime tt = parseAliTimeFlexible(timeStr);
 
-                    WxPayTxn t = new WxPayTxn();
+                    payTxn t = new payTxn();
                     t.setTradeTime(tt);
                     t.setTradeDate(tt.toLocalDate());
                     t.setTradeHour(tt.getHour());
@@ -125,7 +125,7 @@ public class AlipayBillParser implements BillParser {
     }
 
     // ------ B) CSV：优先 GB18030，失败回退 UTF-8；支持 , 与 \t 分隔 ------
-    private List<WxPayTxn> parseCsv(byte[] bytes, Long batchId) throws IOException {
+    private List<payTxn> parseCsv(byte[] bytes, Long batchId) throws IOException {
         List<String[]> rows = readCsvWithCharset(bytes, "GB18030");
         if (rows.isEmpty() || looksMojibake(rows)) rows = readCsvWithCharset(bytes, "UTF-8");
 
@@ -167,7 +167,7 @@ public class AlipayBillParser implements BillParser {
             }
         }
 
-        List<WxPayTxn> out = new ArrayList<>();
+        List<payTxn> out = new ArrayList<>();
         for (int r = dataRow; r < rows.size(); r++) {
             String[] row = rows.get(r);
             try {
@@ -175,7 +175,7 @@ public class AlipayBillParser implements BillParser {
                 if (isBlank(timeStr)) continue;
                 LocalDateTime tt = parseAliTimeFlexible(timeStr);
 
-                WxPayTxn t = new WxPayTxn();
+                payTxn t = new payTxn();
                 t.setTradeTime(tt);
                 t.setTradeDate(tt.toLocalDate());
                 t.setTradeHour(tt.getHour());

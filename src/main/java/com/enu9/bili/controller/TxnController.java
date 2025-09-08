@@ -3,10 +3,10 @@ package com.enu9.bili.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.enu9.bili.DO.WxPayTxn;
+import com.enu9.bili.DO.payTxn;
 import com.enu9.bili.controller.VO.TxnQuery;
 import com.enu9.bili.controller.VO.TxnSummaryVO;
-import com.enu9.bili.mapper.WxPayTxnMapper;
+import com.enu9.bili.mapper.payTxnMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -21,14 +21,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 @RequestMapping("/api/transactions")
 public class TxnController {
-    private final WxPayTxnMapper wxPayTxnMapper;
+    private final payTxnMapper payTxnMapper;
 
     @GetMapping
-    public IPage<WxPayTxn> list(TxnQuery q) {
+    public IPage<payTxn> list(TxnQuery q) {
         // MyBatis-Plus 的 Page：current=第几页, size=每页大小, searchCount=true 自动查总数
-        Page<WxPayTxn> page = new Page<>(q.getPage(), q.getSize(), true);
+        Page<payTxn> page = new Page<>(q.getPage(), q.getSize(), true);
 
-        QueryWrapper<WxPayTxn> w = new QueryWrapper<>();
+        QueryWrapper<payTxn> w = new QueryWrapper<>();
 
         // 时间范围
         if (q.getStart() != null && q.getEnd() != null) {
@@ -59,12 +59,12 @@ public class TxnController {
         w.orderByDesc("trade_time");
 
         // selectPage 自动返回 records、total、size、current、pages
-        return wxPayTxnMapper.selectPage(page, w);
+        return payTxnMapper.selectPage(page, w);
     }
 
     @GetMapping("/summary")
     public TxnSummaryVO summary(TxnQuery q){
-        QueryWrapper<WxPayTxn> w = new QueryWrapper<>();
+        QueryWrapper<payTxn> w = new QueryWrapper<>();
 
         // 时间范围
         if (q.getStart() != null && q.getEnd() != null) {
@@ -90,16 +90,16 @@ public class TxnController {
         if (StringUtils.hasText(q.getCounterparty()))w.like("counterparty", q.getCounterparty());
         if (q.getMinAmount() != null)                w.ge("amount", q.getMinAmount());
         if (q.getMaxAmount() != null)                w.le("amount", q.getMaxAmount());
-        List<WxPayTxn> wxPayTxns = wxPayTxnMapper.selectList(w);
+        List<payTxn> payTxns = payTxnMapper.selectList(w);
         TxnSummaryVO txnSummaryVO = new TxnSummaryVO();
 
-        if (wxPayTxns != null && !wxPayTxns.isEmpty()) {
+        if (payTxns != null && !payTxns.isEmpty()) {
             BigDecimal income = BigDecimal.ZERO;
             BigDecimal expense = BigDecimal.ZERO;
             int incomeCount = 0;
             int expenseCount = 0;
 
-            for (WxPayTxn txn : wxPayTxns) {
+            for (payTxn txn : payTxns) {
                 BigDecimal amt = txn.getAmount() == null ? BigDecimal.ZERO : txn.getAmount();
                 String dir = txn.getDirection();
 
@@ -132,7 +132,7 @@ public class TxnController {
     public Map<String, Object> deleteBatch(@RequestBody Map<String, Object> req) {
         @SuppressWarnings("unchecked")
         List<String> orderIds = (List<String>) req.get("orderIds");
-        int deleted = wxPayTxnMapper.deleteBatchByOrderIds(orderIds);
+        int deleted = payTxnMapper.deleteBatchByOrderIds(orderIds);
         return Collections.singletonMap("deleted", deleted);
     }
 
@@ -140,7 +140,7 @@ public class TxnController {
 
     @PostMapping("/delete-by-filter")
     public Map<String, Object> deleteByFilter(@RequestBody TxnQuery query) {
-        QueryWrapper<WxPayTxn> qw = new QueryWrapper<>();
+        QueryWrapper<payTxn> qw = new QueryWrapper<>();
         if (query.getStart() != null && query.getEnd() != null) {
             qw.between("trade_time", query.getStart(), query.getEnd());
         }
@@ -171,7 +171,7 @@ public class TxnController {
         if (StringUtils.hasText(query.getChannelType())) {
             qw.like("channel_type", query.getChannelType());
         }
-        int deleted = wxPayTxnMapper.delete(qw);
+        int deleted = payTxnMapper.delete(qw);
         return Collections.singletonMap("deleted", deleted);
     }
 }
