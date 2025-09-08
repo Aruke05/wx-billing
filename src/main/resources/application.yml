@@ -31,4 +31,4 @@ spring:
     cache: false
 mercury:
   view:
-    salt: mercury
+    salt:
