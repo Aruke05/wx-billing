@@ -29,3 +29,6 @@ spring:
     prefix: file:./ext/templates/
     suffix: .html
     cache: false
+mercury:
+  view:
+    salt: mercury
